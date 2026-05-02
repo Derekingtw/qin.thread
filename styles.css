@@ -187,26 +187,32 @@ body.locked .app { filter: blur(5px); pointer-events: none; }
 
 .eyebrow {
   margin: 0 0 4px;
-  color: var(--seal);
-  font-size: 13px;
+  color: #7f1f17;
+  font-size: 14px;
   font-weight: 900;
+  text-shadow: 0 1px 0 rgba(255,255,255,.82), 0 0 14px rgba(32,220,224,.32);
 }
 
 .brand-slogan {
   margin: 10px 0 0;
-  color: #8f231b;
+  color: #b6251a;
   font-family: "DFKai-SB", "KaiTi", "Microsoft JhengHei", serif;
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 22px;
+  font-weight: 900;
   line-height: 1.55;
-  text-shadow: 0 0 18px rgba(32, 220, 224, .42), 0 1px 0 rgba(255,255,255,.72);
+  text-shadow:
+    0 1px 0 rgba(255,255,255,.92),
+    0 0 12px rgba(32, 220, 224, .6),
+    0 0 2px rgba(159,47,36,.58);
 }
 
 h1, h2 { margin: 0; letter-spacing: 0; }
 h1 {
   font-size: 32px;
   font-family: "DFKai-SB", "KaiTi", "Microsoft JhengHei", serif;
-  font-weight: 800;
+  font-weight: 900;
+  color: #18100c;
+  text-shadow: 0 1px 0 rgba(255,255,255,.86);
 }
 h2 {
   font-size: 18px;
@@ -898,10 +904,10 @@ tr:last-child td { border-bottom: 0; }
     box-shadow: 0 14px 30px rgba(29,42,37,.1);
     backdrop-filter: blur(16px);
   }
-  .eyebrow { font-size: 12px; }
+  .eyebrow { font-size: 13px; }
   h1 { font-size: 26px; }
   .brand-slogan {
-    font-size: 17px;
+    font-size: 19px;
     line-height: 1.45;
     margin-top: 8px;
   }
