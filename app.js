@@ -1,6 +1,6 @@
 const STORAGE_KEY = "oa_inventory_state_v1";
 const SESSION_KEY = "oa_inventory_session_v1";
-const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "contracts", "leave", "approvals", "tracking", "production", "settings"];
+const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "contracts", "leave", "approvals", "payroll", "tracking", "production", "settings"];
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -38,6 +38,9 @@ const defaultState = () => ({
   tripRequests: [],
   purchaseRequests: [],
   proposalRequests: [],
+  adminPayrolls: [],
+  livePayrolls: [],
+  partnerBonuses: [],
   announcements: [],
   settings: {
     positions: ["負責人", "主管", "執行負責", "品牌助理"],
@@ -56,6 +59,7 @@ let currentLang = "zh-TW";
 let staffTab = "regular";
 let knitterTab = "profiles";
 let approvalTab = "overview";
+let payrollTab = "admin";
 let currentUser = null;
 
 function loadState() {
@@ -171,6 +175,10 @@ function normalizeState(saved) {
   next.tripRequests = (next.tripRequests || []).map((item) => ({ ...item, amount: Number(item.amount || 0), status: item.status || "待審批" }));
   next.purchaseRequests = (next.purchaseRequests || []).map((item) => ({ ...item, qty: Number(item.qty || 1), amount: Number(item.amount || 0), status: item.status || "待審批" }));
   next.proposalRequests = (next.proposalRequests || []).map((item) => ({ ...item, status: item.status || "待審批" }));
+  next.staff = (next.staff || []).map((item) => ({ ...item, gender: item.gender || "女" }));
+  next.adminPayrolls = (next.adminPayrolls || []).map((item) => ({ ...item, ...payrollNumbers(item) }));
+  next.livePayrolls = (next.livePayrolls || []).map((item) => ({ ...item, ...payrollNumbers(item), commission: Number(item.commission || 0), netRevenue: Number(item.netRevenue || 0) }));
+  next.partnerBonuses = (next.partnerBonuses || []).map((item) => ({ ...item, netProfit: Number(item.netProfit || 0), bonusRate: Number(item.bonusRate || 0), bonusAmount: Number(item.bonusAmount || 0) }));
   return next;
 }
 
@@ -381,6 +389,37 @@ function staffName(id, fallback = "-") {
   return (state.staff || []).find((item) => item.id === id)?.name || fallback;
 }
 
+function staffById(id) {
+  return (state.staff || []).find((item) => item.id === id);
+}
+
+function staffGender(id) {
+  return staffById(id)?.gender || "";
+}
+
+function payrollNumbers(item) {
+  return {
+    baseSalary: Number(item.baseSalary || 0),
+    mealAllowance: Number(item.mealAllowance || 0),
+    housingAllowance: Number(item.housingAllowance || 0),
+    transportAllowance: Number(item.transportAllowance || 0),
+    otherAllowance1: Number(item.otherAllowance1 || 0),
+    otherAllowance2: Number(item.otherAllowance2 || 0),
+    otherAllowance3: Number(item.otherAllowance3 || 0),
+    insurance: Number(item.insurance || 0),
+    netSalary: Number(item.netSalary || 0),
+  };
+}
+
+function insuranceFromBase(baseSalary) {
+  return Math.round(Number(baseSalary || 0) * 0.105);
+}
+
+function socialDetail(baseSalary) {
+  const base = Number(baseSalary || 0);
+  return `養老 ${money(base * 0.08)}、醫療 ${money(base * 0.02)}、失業 ${money(base * 0.005)}、公積金 ${money(base * 0.07)}`;
+}
+
 function vatOptions(select, productId) {
   const product = findProduct(productId);
   const vats = [...new Set([
@@ -432,6 +471,7 @@ function syncSelects() {
   liveShowOptions($("#liveSaleShow"));
   positionOptions($("#staffTitle"));
   ["leaveStaff", "tripStaff", "purchaseRequestStaff", "proposalStaff"].forEach((id) => staffOptions($(`#${id}`)));
+  ["adminPayrollStaff", "livePayrollStaff", "partnerBonusStaff"].forEach((id) => staffOptions($(`#${id}`)));
   ["leaveApprover", "tripApprover", "purchaseRequestApprover", "proposalApprover"].forEach((id) => staffOptions($(`#${id}`), true));
   knitterOptions($("#sampleKnitter"));
   renderProductCard($("#purchaseProduct")?.value, "purchaseProductCard");
@@ -842,13 +882,14 @@ function renderStaff() {
     <td>${tag(staffTypeLabel(item.employeeType), item.employeeType === "partner" ? "warn" : item.employeeType === "core" ? "blue" : "ok")}</td>
     <td>${item.code}</td>
     <td>${item.name}</td>
+    <td>${item.gender || "-"}</td>
     <td>${item.dept}</td>
     <td>${item.title || "-"}</td>
     <td>${tag(item.role, "blue")}</td>
     <td>${item.phone || "-"}</td>
     <td>${tag(item.status || "在職", item.status === "離職" ? "out" : "ok")}</td>
     <td>${rowActions("staff", item.id, true)}</td>
-  </tr>`).join("") || emptyRow(9);
+  </tr>`).join("") || emptyRow(10);
 }
 
 function staffTypeLabel(type) {
@@ -906,6 +947,30 @@ function renderApprovals() {
   $("#proposalRows").innerHTML = proposals.map((item) => `<tr><td>${item.code}</td><td>${staffName(item.staffId)}</td><td>${item.title}</td><td>${item.benefit || "-"}</td><td>${staffName(item.approverId)}</td><td>${tag(item.status, item.status === "已通過" ? "ok" : item.status === "已駁回" ? "out" : "warn")}</td><td>${rowActions("proposal", item.id)}</td></tr>`).join("") || emptyRow(7);
 }
 
+function allowanceTotal(item, includeTransport = true) {
+  return Number(item.mealAllowance || 0) + Number(item.housingAllowance || 0) + (includeTransport ? Number(item.transportAllowance || 0) : 0) + Number(item.otherAllowance1 || 0) + Number(item.otherAllowance2 || 0) + Number(item.otherAllowance3 || 0);
+}
+
+function renderPayroll() {
+  const admins = currentRows(state.adminPayrolls || []);
+  $("#adminPayrollCount").textContent = `${admins.length} 筆`;
+  $("#adminPayrollRows").innerHTML = admins.map((item) => `<tr>
+    <td>${staffName(item.staffId)}</td><td>${item.gender || staffGender(item.staffId) || "-"}</td><td>${item.employmentStatus || "-"}</td><td class="num">${money(item.baseSalary)}</td><td class="num">${money(allowanceTotal(item))}</td><td class="num">${money(item.insurance)}</td><td class="num">${money(item.netSalary)}</td><td>每月 ${item.payDay || 10} 日</td><td>${rowActions("adminPayroll", item.id)}</td>
+  </tr>`).join("") || emptyRow(9);
+
+  const lives = currentRows(state.livePayrolls || []);
+  $("#livePayrollCount").textContent = `${lives.length} 筆`;
+  $("#livePayrollRows").innerHTML = lives.map((item) => `<tr>
+    <td>${staffName(item.staffId)}</td><td>${item.gender || staffGender(item.staffId) || "-"}</td><td class="num">${money(item.baseSalary)}</td><td>${number(item.commission)}%</td><td class="num">${money(item.netRevenue)}</td><td class="num">${money(allowanceTotal(item, false))}</td><td class="num">${money(item.insurance)}</td><td class="num">${money(item.netSalary)}</td><td>${rowActions("livePayroll", item.id)}</td>
+  </tr>`).join("") || emptyRow(9);
+
+  const bonuses = currentRows(state.partnerBonuses || []);
+  $("#partnerBonusCount").textContent = `${bonuses.length} 筆`;
+  $("#partnerBonusRows").innerHTML = bonuses.map((item) => `<tr>
+    <td>${staffName(item.staffId)}</td><td>${item.gender || staffGender(item.staffId) || "-"}</td><td class="num">${money(item.netProfit)}</td><td>${number(item.bonusRate)}%</td><td class="num">${money(item.bonusAmount)}</td><td>每月 10 日</td><td>${rowActions("partnerBonus", item.id)}</td>
+  </tr>`).join("") || emptyRow(7);
+}
+
 function renderAll() {
   syncSelects();
   renderDashboard();
@@ -923,12 +988,17 @@ function renderAll() {
   renderStaff();
   renderLeave();
   renderApprovals();
+  renderPayroll();
   renderSettings();
   if (window.lucide) window.lucide.createIcons();
   if (currentLang === "zh-CN") applyLanguage();
 }
 
 function setView(view) {
+  if (currentUser && !hasPermission(view)) {
+    toast("沒有此分頁權限");
+    view = ALL_VIEWS.find(hasPermission) || "dashboard";
+  }
   activeView = view;
   $$(".view").forEach((el) => el.classList.toggle("active", el.id === view));
   $$(".nav-item").forEach((el) => el.classList.toggle("active", el.dataset.view === view));
@@ -961,6 +1031,13 @@ function setApprovalTab(tab) {
   $$("[data-approval-tab]").forEach((button) => button.classList.toggle("active", button.dataset.approvalTab === tab));
   $$("[data-approval-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.approvalPanel === tab));
   renderApprovals();
+}
+
+function setPayrollTab(tab) {
+  payrollTab = tab;
+  $$("[data-payroll-tab]").forEach((button) => button.classList.toggle("active", button.dataset.payrollTab === tab));
+  $$("[data-payroll-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.payrollPanel === tab));
+  renderPayroll();
 }
 
 function setAuthTab(tab) {
@@ -1011,6 +1088,12 @@ function resetForm(form) {
   }
   if (form.id === "liveSaleForm") {
     updateLiveSaleNet();
+  }
+  if (["adminPayrollForm", "livePayrollForm", "partnerBonusForm"].includes(form.id)) {
+    updatePayrollStaff(form);
+    if (form.id === "adminPayrollForm") updateAdminPayrollCalc();
+    if (form.id === "livePayrollForm") updateLivePayrollCalc();
+    if (form.id === "partnerBonusForm") updatePartnerBonusCalc();
   }
 }
 
@@ -1178,6 +1261,7 @@ function upsertStaff(form) {
     id: data.id || uid("stf"),
     code: data.code.trim(),
     name: data.name.trim(),
+    gender: data.gender || "女",
     dept: data.dept,
     title: data.title,
     role: data.role,
@@ -1243,7 +1327,7 @@ function deleteItem(type, id) {
       ? state.purchases.some((doc) => doc.partnerId === id) || state.sales.some((doc) => doc.partnerId === id)
       : false;
   if (hasDoc) return toast("已有單據使用，請保留資料");
-  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests" };
+  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses" };
   state[map[type]] = state[map[type]].filter((item) => item.id !== id);
   saveState();
   toast("資料已刪除");
@@ -1281,6 +1365,76 @@ function approveRequest(type, id, status) {
   state[key] = (state[key] || []).map((item) => item.id === id ? { ...item, status, approvedAt: Date.now() } : item);
   saveState();
   toast(status === "已通過" ? "審批已通過" : "審批已駁回");
+  renderAll();
+}
+
+function updatePayrollStaff(form) {
+  if (!form?.elements.staffId) return;
+  const staff = staffById(form.elements.staffId.value);
+  if (form.elements.gender) form.elements.gender.value = staff?.gender || "";
+  if (form.elements.joinDate && staff?.joinDate) form.elements.joinDate.value = staff.joinDate;
+}
+
+function updateAdminPayrollCalc() {
+  const form = $("#adminPayrollForm");
+  updatePayrollStaff(form);
+  const base = Number(form.elements.baseSalary.value || 0);
+  const data = Object.fromEntries(new FormData(form));
+  const insurance = insuranceFromBase(base);
+  const net = base + allowanceTotal(data) - insurance;
+  form.elements.insurance.value = insurance;
+  form.elements.socialDetail.value = socialDetail(base);
+  form.elements.netSalary.value = Math.max(0, Math.round(net));
+}
+
+function updateLivePayrollCalc() {
+  const form = $("#livePayrollForm");
+  updatePayrollStaff(form);
+  const base = Number(form.elements.baseSalary.value || 0);
+  const commission = Number(form.elements.commission.value || 0) / 100;
+  const netRevenue = Number(form.elements.netRevenue.value || 0);
+  const data = Object.fromEntries(new FormData(form));
+  const insurance = insuranceFromBase(base);
+  const net = base + commission * netRevenue + allowanceTotal(data, false) - insurance;
+  form.elements.insurance.value = insurance;
+  form.elements.socialDetail.value = socialDetail(base);
+  form.elements.netSalary.value = Math.max(0, Math.round(net));
+}
+
+function updatePartnerBonusCalc() {
+  const form = $("#partnerBonusForm");
+  updatePayrollStaff(form);
+  const amount = Number(form.elements.netProfit.value || 0) * Number(form.elements.bonusRate.value || 0) / 100;
+  form.elements.bonusAmount.value = Math.round(amount);
+}
+
+function addAdminPayroll(form) {
+  updateAdminPayrollCalc();
+  const data = Object.fromEntries(new FormData(form));
+  state.adminPayrolls = [...(state.adminPayrolls || []), { id: uid("admin-pay"), createdAt: Date.now(), ...data, ...payrollNumbers(data), socialDetail: data.socialDetail }];
+  saveState();
+  resetForm(form);
+  toast("行政薪資已儲存");
+  renderAll();
+}
+
+function addLivePayroll(form) {
+  updateLivePayrollCalc();
+  const data = Object.fromEntries(new FormData(form));
+  state.livePayrolls = [...(state.livePayrolls || []), { id: uid("live-pay"), createdAt: Date.now(), ...data, ...payrollNumbers(data), commission: Number(data.commission || 0), netRevenue: Number(data.netRevenue || 0), socialDetail: data.socialDetail }];
+  saveState();
+  resetForm(form);
+  toast("直播薪資已儲存");
+  renderAll();
+}
+
+function addPartnerBonus(form) {
+  updatePartnerBonusCalc();
+  const data = Object.fromEntries(new FormData(form));
+  state.partnerBonuses = [...(state.partnerBonuses || []), { id: uid("partner-bonus"), createdAt: Date.now(), ...data, gender: data.gender || staffGender(data.staffId), netProfit: Number(data.netProfit || 0), bonusRate: Number(data.bonusRate || 0), bonusAmount: Number(data.bonusAmount || 0) }];
+  saveState();
+  resetForm(form);
+  toast("合夥人紅利已儲存");
   renderAll();
 }
 
@@ -1525,6 +1679,7 @@ function reportContent(view) {
     staff: "人事資料報表",
     leave: "請假申請報表",
     approvals: "審批系統報表",
+    payroll: "薪資系統報表",
     settings: "資料設定報表",
   };
   const saleProducts = state.products.filter((product) => product.type === "sale");
@@ -1574,6 +1729,11 @@ function reportContent(view) {
     staff: () => reportTable(["編號", "姓名", "部門", "職位", "角色", "電話", "狀態"], (state.staff || []).map((p) => [p.code, p.name, p.dept, p.title, p.role, p.phone, p.status])),
     leave: () => reportTable(["編號", "姓名", "類型", "開始日期", "結束日期", "天數", "狀態", "審批人"], (state.leaveRequests || []).map((p) => [p.code, staffName(p.staffId, p.name || "-"), p.type, p.startDate, p.endDate, p.days, p.status, staffName(p.approverId, p.approver || "-")])),
     approvals: () => reportTable(["類型", "編號", "申請人", "主旨", "日期", "金額/天數", "主管機關", "狀態"], approvalRows().map((p) => [p.typeName, p.code, staffName(p.staffId), p.title, p.date, p.amount, staffName(p.approverId), p.status])),
+    payroll: () => reportTable(["類型", "姓名", "性別", "底薪/淨利", "比率", "實領"], [
+      ...(state.adminPayrolls || []).map((p) => ["行政薪資", staffName(p.staffId), p.gender || staffGender(p.staffId), money(p.baseSalary), "-", money(p.netSalary)]),
+      ...(state.livePayrolls || []).map((p) => ["直播薪資", staffName(p.staffId), p.gender || staffGender(p.staffId), money(p.baseSalary), `${number(p.commission)}%`, money(p.netSalary)]),
+      ...(state.partnerBonuses || []).map((p) => ["合夥人紅利", staffName(p.staffId), p.gender || staffGender(p.staffId), money(p.netProfit), `${number(p.bonusRate)}%`, money(p.bonusAmount)]),
+    ]),
     settings: () => reportTable(["職位名稱"], (state.settings?.positions || []).map((name) => [name])),
   };
 
@@ -1736,6 +1896,7 @@ function bindEvents() {
   $$("[data-product-tab]").forEach((button) => button.addEventListener("click", () => setProductTab(button.dataset.productTab)));
   $$("[data-knitter-tab]").forEach((button) => button.addEventListener("click", () => setKnitterTab(button.dataset.knitterTab)));
   $$("[data-approval-tab]").forEach((button) => button.addEventListener("click", () => setApprovalTab(button.dataset.approvalTab)));
+  $$("[data-payroll-tab]").forEach((button) => button.addEventListener("click", () => setPayrollTab(button.dataset.payrollTab)));
   $$("[data-setting-tab]").forEach((button) => button.addEventListener("click", () => setSettingTab(button.dataset.settingTab)));
   $$("[data-staff-tab]").forEach((button) => button.addEventListener("click", () => setStaffTab(button.dataset.staffTab)));
   $$("[data-auth-tab]").forEach((button) => button.addEventListener("click", () => setAuthTab(button.dataset.authTab)));
@@ -1761,6 +1922,19 @@ function bindEvents() {
   $("#sampleImageInput").addEventListener("change", (event) => handleImageUpload(event, "sampleForm", "sampleImagePreview"));
   $("#liveSaleRevenue").addEventListener("input", updateLiveSaleNet);
   $("#liveSaleRefund").addEventListener("input", updateLiveSaleNet);
+  ["adminPayrollForm", "livePayrollForm", "partnerBonusForm"].forEach((formId) => {
+    const form = $(`#${formId}`);
+    form.addEventListener("input", () => {
+      if (formId === "adminPayrollForm") updateAdminPayrollCalc();
+      if (formId === "livePayrollForm") updateLivePayrollCalc();
+      if (formId === "partnerBonusForm") updatePartnerBonusCalc();
+    });
+    form.addEventListener("change", () => {
+      if (formId === "adminPayrollForm") updateAdminPayrollCalc();
+      if (formId === "livePayrollForm") updateLivePayrollCalc();
+      if (formId === "partnerBonusForm") updatePartnerBonusCalc();
+    });
+  });
   $("#globalSearch").addEventListener("input", (event) => {
     searchTerm = event.target.value.trim();
     renderAll();
@@ -1861,6 +2035,18 @@ function bindEvents() {
     event.preventDefault();
     addApprovalRequest(event.currentTarget, "proposalRequests", "prop", (data) => ({ ...data }));
   });
+  $("#adminPayrollForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addAdminPayroll(event.currentTarget);
+  });
+  $("#livePayrollForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addLivePayroll(event.currentTarget);
+  });
+  $("#partnerBonusForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addPartnerBonus(event.currentTarget);
+  });
 
   document.addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit]");
@@ -1927,6 +2113,9 @@ async function init() {
   resetForm($("#tripForm"));
   resetForm($("#purchaseRequestForm"));
   resetForm($("#proposalForm"));
+  resetForm($("#adminPayrollForm"));
+  resetForm($("#livePayrollForm"));
+  resetForm($("#partnerBonusForm"));
   renderAll();
   setView(activeView);
   applyPermissions();

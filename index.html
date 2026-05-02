@@ -54,6 +54,7 @@
         <button class="nav-item" data-view="contracts"><i data-lucide="file-signature"></i><span>合同</span></button>
         <button class="nav-item" data-view="leave"><i data-lucide="calendar-check"></i><span>請假申請</span></button>
         <button class="nav-item" data-view="approvals"><i data-lucide="stamp"></i><span>審批系統</span></button>
+        <button class="nav-item" data-view="payroll"><i data-lucide="wallet-cards"></i><span>薪資系統</span></button>
         <button class="nav-item" data-view="tracking"><i data-lucide="route"></i><span>貨品追蹤</span></button>
         <button class="nav-item" data-view="production"><i data-lucide="workflow"></i><span>生產圖</span></button>
         <button class="nav-item" data-view="settings"><i data-lucide="settings"></i><span>資料設定</span></button>
@@ -67,9 +68,8 @@
     <main class="app">
       <header class="topbar">
         <div>
-          <p class="eyebrow">秦時線 · 水墨營運中台</p>
           <h1 id="viewTitle">總覽</h1>
-          <p class="brand-slogan">一針入秦時，一線織風華<br />歲月入線，深情不改</p>
+          <p class="brand-slogan"><span>一針入秦時，一線織風華。</span><span>歲月入線，深情不改。</span></p>
         </div>
         <div class="top-actions">
           <label class="search">
@@ -519,6 +519,7 @@
             <input type="hidden" name="employeeType" id="staffEmployeeType" value="regular" />
             <label>員工編號<input required name="code" placeholder="P001" /></label>
             <label>姓名<input required name="name" /></label>
+            <label>性別<select name="gender"><option>女</option><option>男</option><option>其他</option></select></label>
             <label>部門<select name="dept"><option>總經辦</option><option>直播營運部</option><option>執行部</option><option>品牌部</option></select></label>
             <label>職位<select name="title" id="staffTitle"></select></label>
             <label>角色<select name="role"><option>管理員</option><option>主管</option><option>員工</option><option>老闆</option></select></label>
@@ -542,7 +543,7 @@
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2>員工資料</h2><span id="staffCount" class="pill">0 人</span></div>
-            <div class="table-wrap"><table><thead><tr><th>類型</th><th>編號</th><th>姓名</th><th>部門</th><th>職位</th><th>角色</th><th>電話</th><th>狀態</th><th></th></tr></thead><tbody id="staffRows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>類型</th><th>編號</th><th>姓名</th><th>性別</th><th>部門</th><th>職位</th><th>角色</th><th>電話</th><th>狀態</th><th></th></tr></thead><tbody id="staffRows"></tbody></table></div>
           </section>
         </div>
       </section>
@@ -672,6 +673,75 @@
           <section class="panel wide">
             <div class="panel-head"><h2>提案申請紀錄</h2><span id="proposalCount" class="pill">0 筆</span></div>
             <div class="table-wrap"><table><thead><tr><th>編號</th><th>提案人</th><th>主旨</th><th>效益</th><th>主管機關</th><th>狀態</th><th></th></tr></thead><tbody id="proposalRows"></tbody></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="payroll">
+        <div class="section-tabs" role="tablist" aria-label="薪資系統分類">
+          <button class="section-tab active" data-payroll-tab="admin" type="button">行政薪資</button>
+          <button class="section-tab" data-payroll-tab="live" type="button">直播薪資</button>
+          <button class="section-tab" data-payroll-tab="partner" type="button">合夥人紅利</button>
+        </div>
+        <div class="workspace payroll-panel active" data-payroll-panel="admin">
+          <form class="editor" id="adminPayrollForm">
+            <h2>行政薪資</h2>
+            <label>姓名<select required name="staffId" id="adminPayrollStaff"></select></label>
+            <label>性別<input readonly name="gender" /></label>
+            <label>入職日期<input name="joinDate" type="date" /></label>
+            <label>任用狀態<select name="employmentStatus"><option>試用期員工</option><option>正式員工</option><option>實習生</option><option>外包</option></select></label>
+            <label>每月發薪日<input name="payDay" type="number" min="1" max="31" value="10" /></label>
+            <label>底薪<input required name="baseSalary" type="number" min="0" step="1" /></label>
+            <div class="two-col"><label>餐補<input name="mealAllowance" type="number" min="0" step="1" value="0" /></label><label>房補<input name="housingAllowance" type="number" min="0" step="1" value="0" /></label></div>
+            <div class="two-col"><label>車補<input name="transportAllowance" type="number" min="0" step="1" value="0" /></label><label>其他補貼1<input name="otherAllowance1" type="number" min="0" step="1" value="0" /></label></div>
+            <div class="two-col"><label>其他補貼2<input name="otherAllowance2" type="number" min="0" step="1" value="0" /></label><label>其他補貼3<input name="otherAllowance3" type="number" min="0" step="1" value="0" /></label></div>
+            <label>保險自繳額<input readonly name="insurance" /></label>
+            <label>四險一金<input readonly name="socialDetail" /></label>
+            <label>實領薪資<input readonly name="netSalary" /></label>
+            <label>備註<input name="note" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>行政薪資表</h2><span id="adminPayrollCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>姓名</th><th>性別</th><th>任用狀態</th><th>底薪</th><th>補貼</th><th>保險自繳</th><th>實領薪資</th><th>發薪日</th><th></th></tr></thead><tbody id="adminPayrollRows"></tbody></table></div>
+          </section>
+        </div>
+        <div class="workspace payroll-panel" data-payroll-panel="live">
+          <form class="editor" id="livePayrollForm">
+            <h2>直播薪資</h2>
+            <label>姓名<select required name="staffId" id="livePayrollStaff"></select></label>
+            <label>性別<input readonly name="gender" /></label>
+            <label>每月發薪日<input name="payDay" type="number" min="1" max="31" value="10" /></label>
+            <label>底薪<input required name="baseSalary" type="number" min="0" step="1" /></label>
+            <label>提成<span class="unit-field"><input required name="commission" type="number" min="0" step="0.01" /><b>%</b></span></label>
+            <label>淨營收<input required name="netRevenue" type="number" min="0" step="1" /></label>
+            <div class="two-col"><label>其他補貼1<input name="otherAllowance1" type="number" min="0" step="1" value="0" /></label><label>其他補貼2<input name="otherAllowance2" type="number" min="0" step="1" value="0" /></label></div>
+            <label>其他補貼3<input name="otherAllowance3" type="number" min="0" step="1" value="0" /></label>
+            <label>保險自繳額<input readonly name="insurance" /></label>
+            <label>四險一金<input readonly name="socialDetail" /></label>
+            <label>實領薪資<input readonly name="netSalary" /></label>
+            <label>備註<input name="note" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>直播薪資表</h2><span id="livePayrollCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>姓名</th><th>性別</th><th>底薪</th><th>提成</th><th>淨營收</th><th>補貼</th><th>保險自繳</th><th>實領薪資</th><th></th></tr></thead><tbody id="livePayrollRows"></tbody></table></div>
+          </section>
+        </div>
+        <div class="workspace payroll-panel" data-payroll-panel="partner">
+          <form class="editor" id="partnerBonusForm">
+            <h2>合夥人紅利</h2>
+            <label>姓名<select required name="staffId" id="partnerBonusStaff"></select></label>
+            <label>性別<input readonly name="gender" /></label>
+            <label>每月結算日<input readonly value="10 日" /></label>
+            <label>當月淨利潤<input required name="netProfit" type="number" min="0" step="1" /></label>
+            <label>紅利<span class="unit-field"><input required name="bonusRate" type="number" min="0" step="0.01" /><b>%</b></span></label>
+            <label>實領獎金<input readonly name="bonusAmount" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>合夥人紅利表</h2><span id="partnerBonusCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>姓名</th><th>性別</th><th>當月淨利潤</th><th>紅利</th><th>實領獎金</th><th>結算日</th><th></th></tr></thead><tbody id="partnerBonusRows"></tbody></table></div>
           </section>
         </div>
       </section>

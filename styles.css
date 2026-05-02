@@ -194,25 +194,16 @@ body.locked .app { filter: blur(5px); pointer-events: none; }
   backdrop-filter: blur(14px);
 }
 
-.eyebrow {
-  margin: 0 0 4px;
-  color: #7f1f17;
-  font-size: 14px;
-  font-weight: 900;
-  text-shadow: 0 1px 0 rgba(255,255,255,.82), 0 0 14px rgba(32,220,224,.32);
-}
-
 .brand-slogan {
-  margin: 10px 0 0;
-  color: #7f2a21;
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+  color: #6f241c;
   font-family: "DFKai-SB", "KaiTi", "Microsoft JhengHei", serif;
-  font-size: 22px;
+  font-size: 21px;
   font-weight: 900;
-  line-height: 1.55;
-  text-shadow:
-    0 1px 0 rgba(255,255,255,.92),
-    0 0 10px rgba(32, 220, 224, .36),
-    0 0 1px rgba(95,35,27,.5);
+  line-height: 1.45;
+  text-shadow: none;
 }
 
 h1, h2 { margin: 0; letter-spacing: 0; }
@@ -617,6 +608,7 @@ input[type="file"] {
 .setting-panel,
 .knitter-panel,
 .approval-panel,
+.payroll-panel,
 .staff-extra {
   display: none;
 }
@@ -629,12 +621,14 @@ input[type="file"] {
 .product-list.active,
 .setting-panel.active,
 .knitter-panel.active,
-.approval-panel.active {
+.approval-panel.active,
+.payroll-panel.active {
   display: block;
 }
 
 .knitter-panel.workspace.active,
-.approval-panel.workspace.active {
+.approval-panel.workspace.active,
+.payroll-panel.workspace.active {
   display: grid;
 }
 
@@ -916,10 +910,9 @@ tr:last-child td { border-bottom: 0; }
     box-shadow: 0 14px 30px rgba(29,42,37,.14);
     backdrop-filter: blur(16px);
   }
-  .eyebrow { font-size: 13px; }
   h1 { font-size: 26px; }
   .brand-slogan {
-    font-size: 19px;
+    font-size: 18px;
     line-height: 1.45;
     margin-top: 8px;
   }
