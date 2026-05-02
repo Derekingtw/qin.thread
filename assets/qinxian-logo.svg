@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="秦時線 Logo">
+  <defs>
+    <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fffdf5"/>
+      <stop offset=".58" stop-color="#f6eddd"/>
+      <stop offset="1" stop-color="#e5fbf8"/>
+    </linearGradient>
+    <filter id="ink">
+      <feTurbulence type="fractalNoise" baseFrequency=".025" numOctaves="3" seed="8"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 .12"/>
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" mode="multiply"/>
+    </filter>
+  </defs>
+  <rect width="320" height="320" rx="28" fill="#9f2f24"/>
+  <rect x="18" y="18" width="284" height="284" rx="20" fill="url(#paper)"/>
+  <path d="M55 228 C105 196 134 225 174 189 C214 153 238 170 269 128" fill="none" stroke="#20dce0" stroke-width="7" stroke-linecap="round" opacity=".8"/>
+  <path d="M45 90 C90 62 134 70 171 91 C205 110 236 105 277 79" fill="none" stroke="#9f2f24" stroke-width="9" stroke-linecap="round" opacity=".88"/>
+  <text x="160" y="158" text-anchor="middle" font-size="64" font-family="DFKai-SB, KaiTi, serif" font-weight="800" fill="#261914" filter="url(#ink)">秦時線</text>
+  <text x="160" y="205" text-anchor="middle" font-size="24" font-family="Microsoft JhengHei, sans-serif" letter-spacing="5" fill="#8b2b22">QIN THREAD</text>
+</svg>

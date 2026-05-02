@@ -1409,7 +1409,6 @@ function bindEvents() {
   $$("[data-staff-tab]").forEach((button) => button.addEventListener("click", () => setStaffTab(button.dataset.staffTab)));
   $$("[data-auth-tab]").forEach((button) => button.addEventListener("click", () => setAuthTab(button.dataset.authTab)));
   $("#quickSaleBtn").addEventListener("click", () => setView("sales"));
-  $("#brandHome").addEventListener("click", () => setView("dashboard"));
   $("#reportBtn").addEventListener("click", () => openReport(activeView));
   $("#langBtn").addEventListener("click", toggleLanguage);
   $("#logoutBtn").addEventListener("click", logoutUser);

@@ -13,6 +13,7 @@ const types = {
   ".js": "text/javascript; charset=utf-8",
   ".md": "text/plain; charset=utf-8",
   ".ai": "application/pdf",
+  ".svg": "image/svg+xml; charset=utf-8",
 };
 
 async function readBody(req) {
