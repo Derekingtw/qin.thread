@@ -7,6 +7,7 @@ const root = process.cwd();
 const port = Number(process.env.PORT || 4173);
 const dataDir = join(root, "data");
 const stateFile = join(dataDir, "oa-state.json");
+const backupFile = join(dataDir, "oa-state.backup.json");
 const types = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -22,6 +23,22 @@ async function readBody(req) {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+function hasMeaningfulState(data) {
+  return Boolean(
+    data &&
+    (
+      (data.settings?.users || []).length ||
+      (data.products || []).length ||
+      (data.partners || []).length ||
+      (data.purchases || []).length ||
+      (data.sales || []).length ||
+      (data.liveSales || []).length ||
+      (data.knitters || []).length ||
+      (data.samples || []).length
+    )
+  );
+}
+
 createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://localhost:${port}`);
   if (url.pathname === "/api/state" && req.method === "GET") {
@@ -30,16 +47,33 @@ createServer(async (req, res) => {
       res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
       res.end(data);
     } catch {
-      res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-      res.end("{}");
+      try {
+        const backup = await readFile(backupFile, "utf8");
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+        res.end(backup);
+      } catch {
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+        res.end("{}");
+      }
     }
     return;
   }
   if (url.pathname === "/api/state" && req.method === "POST") {
     try {
       const body = await readBody(req);
-      JSON.parse(body);
+      const nextState = JSON.parse(body);
+      if (!hasMeaningfulState(nextState) && existsSync(stateFile)) {
+        const currentState = JSON.parse(await readFile(stateFile, "utf8"));
+        if (hasMeaningfulState(currentState)) {
+          res.writeHead(409, { "content-type": "application/json; charset=utf-8" });
+          res.end('{"ok":false,"reason":"refuse_empty_overwrite"}');
+          return;
+        }
+      }
       await mkdir(dataDir, { recursive: true });
+      if (existsSync(stateFile)) {
+        await writeFile(backupFile, await readFile(stateFile, "utf8"), "utf8");
+      }
       await writeFile(stateFile, body, "utf8");
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end('{"ok":true}');

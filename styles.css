@@ -1,9 +1,9 @@
 :root {
   --bg: #f2f8f5;
-  --ink: #211914;
-  --muted: #6c675f;
+  --ink: #17110d;
+  --muted: #403a34;
   --line: rgba(31, 206, 210, .26);
-  --panel: rgba(255, 253, 245, 0.9);
+  --panel: rgba(255, 253, 245, 0.97);
   --green: #a73528;
   --green-dark: #6b221a;
   --amber: #a56f27;
@@ -30,6 +30,10 @@ body {
   display: grid;
   grid-template-columns: 260px 1fr;
   overflow-x: hidden;
+}
+
+body, input, select, button {
+  font-weight: 600;
 }
 
 button, input, select { font: inherit; }
@@ -127,7 +131,7 @@ body.locked .app { filter: blur(5px); pointer-events: none; }
 
 .brand small {
   display: block;
-  color: #d7cab8;
+  color: #f4eadc;
   margin-top: 3px;
 }
 
@@ -144,7 +148,7 @@ body.locked .app { filter: blur(5px); pointer-events: none; }
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #d9eee3;
+  color: #f4fffb;
   background: transparent;
   text-align: left;
 }
@@ -170,7 +174,7 @@ body.locked .app { filter: blur(5px); pointer-events: none; }
     radial-gradient(ellipse at 88% 8%, rgba(32, 220, 224, .2), transparent 30%),
     radial-gradient(ellipse at 18% 18%, rgba(159, 47, 36, .12), transparent 28%),
     linear-gradient(180deg, rgba(255, 253, 245, .94), rgba(232, 249, 245, .84) 46%, rgba(255, 246, 234, .78));
-  opacity: .98;
+  opacity: 1;
 }
 
 .topbar {
@@ -185,7 +189,7 @@ body.locked .app { filter: blur(5px); pointer-events: none; }
   margin: 0 0 4px;
   color: var(--seal);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .brand-slogan {
@@ -218,7 +222,7 @@ h2 {
 .search {
   width: min(34vw, 390px);
   height: 44px;
-  background: rgba(255, 253, 247, .9);
+  background: rgba(255, 253, 247, .98);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: flex;
@@ -232,6 +236,7 @@ h2 {
   outline: 0;
   width: 100%;
   min-width: 80px;
+  color: #17110d;
 }
 
 .primary-btn, .icon-btn, .ghost-light-btn {
@@ -256,8 +261,8 @@ h2 {
 .ghost-light-btn {
   height: 44px;
   padding: 0 14px;
-  color: var(--green-dark);
-  background: rgba(255, 253, 247, .84);
+  color: #4d1712;
+  background: rgba(255, 253, 247, .98);
   border: 1px solid var(--line);
   font-weight: 800;
   white-space: nowrap;
@@ -313,6 +318,7 @@ h2 {
 .metric span {
   color: var(--muted);
   font-size: 14px;
+  font-weight: 800;
 }
 
 .metric strong {
@@ -366,7 +372,7 @@ label {
   gap: 7px;
   color: var(--muted);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 900;
 }
 
 input, select {
@@ -376,7 +382,8 @@ input, select {
   border-radius: 8px;
   padding: 0 11px;
   color: var(--ink);
-  background: rgba(255, 253, 247, .92);
+  background: rgba(255, 253, 247, .98);
+  font-weight: 700;
 }
 
 input[type="file"] {
@@ -424,6 +431,7 @@ input[type="file"] {
 .product-summary span {
   color: var(--muted);
   font-size: 12px;
+  font-weight: 900;
 }
 
 .product-summary strong {
@@ -683,12 +691,16 @@ th, td {
 }
 
 th {
-  color: var(--muted);
+  color: #302821;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 900;
 }
 
-td { font-size: 14px; }
+td {
+  color: #211914;
+  font-size: 14px;
+  font-weight: 650;
+}
 tr:last-child td { border-bottom: 0; }
 .num { text-align: right; }
 .tag {
@@ -750,7 +762,12 @@ tr:last-child td { border-bottom: 0; }
 }
 
 .activity-item strong, .activity-item span { display: block; }
-.activity-item span { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.activity-item span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+  margin-top: 2px;
+}
 
 .empty {
   color: var(--muted);

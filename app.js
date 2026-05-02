@@ -40,6 +40,9 @@ const defaultState = () => ({
     positions: ["負責人", "主管", "執行負責", "品牌助理"],
     users: [],
   },
+  meta: {
+    updatedAt: 0,
+  },
 });
 
 let state = normalizeState(loadState());
@@ -64,11 +67,35 @@ async function loadCloudState() {
     const response = await fetch("/api/state", { cache: "no-store" });
     if (!response.ok) return;
     const cloudState = await response.json();
-    state = normalizeState(cloudState);
+    const localState = normalizeState(loadState());
+    if (!isMeaningfulState(cloudState) && isMeaningfulState(localState)) {
+      state = localState;
+      saveState();
+      return;
+    }
+    if (isMeaningfulState(cloudState)) {
+      state = normalizeState(cloudState);
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     // Offline/local-file fallback keeps using localStorage.
   }
+}
+
+function isMeaningfulState(value) {
+  return Boolean(
+    value &&
+    (
+      (value.settings?.users || []).length ||
+      (value.products || []).length ||
+      (value.partners || []).length ||
+      (value.purchases || []).length ||
+      (value.sales || []).length ||
+      (value.liveSales || []).length ||
+      (value.knitters || []).length ||
+      (value.samples || []).length
+    )
+  );
 }
 
 function normalizeState(saved) {
@@ -76,6 +103,9 @@ function normalizeState(saved) {
   next.settings = {
     ...defaultState().settings,
     ...(saved?.settings || {}),
+  };
+  next.meta = {
+    updatedAt: Number(saved?.meta?.updatedAt || 0),
   };
   next.settings.users = next.settings.users || [];
   next.settings.positions = [...new Set([...(next.settings.positions || []), ...((next.staff || []).map((item) => item.title).filter(Boolean))])];
@@ -136,6 +166,7 @@ function findProductIn(saved, id) {
 }
 
 function saveState() {
+  state.meta = { ...(state.meta || {}), updatedAt: Date.now() };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   fetch("/api/state", {
     method: "POST",
