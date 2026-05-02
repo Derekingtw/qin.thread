@@ -158,7 +158,10 @@
           <form class="editor product-editor active" id="sellProductForm" data-product-panel="saleGoods">
             <h2>銷售產品</h2>
             <input type="hidden" name="id" />
+            <input type="hidden" name="imageData" />
             <label>商品編號<input required readonly name="sku" placeholder="系統自動生成" /></label>
+            <label>產品圖片<input name="imageFile" id="productImageInput" type="file" accept="image/*" /></label>
+            <div class="image-preview" id="productImagePreview">尚未選擇圖片</div>
             <label>紗號<input required name="yarnNo" placeholder="YJ-26S" /></label>
             <label>支數<input name="count" placeholder="2/26NM" /></label>
             <label>成分<input name="composition" placeholder="100% 羊絨" /></label>
@@ -199,7 +202,7 @@
             <div class="panel-head"><h2 id="productListTitle">銷售產品清單</h2><span id="productCount" class="pill">0 筆</span></div>
             <div class="table-wrap product-list active" data-product-panel="saleGoods">
               <table>
-                <thead><tr><th>編號</th><th>品名</th><th>紗號</th><th>支數</th><th>成分</th><th>色號</th><th>缸號</th><th>工廠生產重量</th><th>產品數量</th><th>單包團數</th><th>產品包數</th><th>售價</th><th></th></tr></thead>
+                <thead><tr><th>圖片</th><th>編號</th><th>品名</th><th>紗號</th><th>支數</th><th>成分</th><th>色號</th><th>缸號</th><th>工廠生產重量</th><th>產品數量</th><th>單包團數</th><th>產品包數</th><th>售價</th><th></th></tr></thead>
                 <tbody id="sellProductRows"></tbody>
               </table>
             </div>
@@ -262,7 +265,7 @@
             <div class="panel-head"><h2>進貨紀錄</h2><span id="purchaseCount" class="pill">0 筆</span></div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>單號</th><th>日期</th><th>工廠單位</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>缸號</th><th>進貨包數</th><th>單包進價</th><th>金額</th><th></th></tr></thead>
+                <thead><tr><th>圖片</th><th>單號</th><th>日期</th><th>工廠單位</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>缸號</th><th>進貨包數</th><th>單包進價</th><th>金額</th><th></th></tr></thead>
                 <tbody id="purchaseRows"></tbody>
               </table>
             </div>
@@ -289,7 +292,7 @@
             <div class="panel-head"><h2>銷貨紀錄</h2><span id="saleCount" class="pill">0 筆</span></div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>單號</th><th>日期</th><th>國內合作商</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>缸號</th><th>銷貨包數</th><th>單包售價</th><th>金額</th><th></th></tr></thead>
+                <thead><tr><th>圖片</th><th>單號</th><th>日期</th><th>國內合作商</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>缸號</th><th>銷貨包數</th><th>單包售價</th><th>金額</th><th></th></tr></thead>
                 <tbody id="saleRows"></tbody>
               </table>
             </div>
@@ -305,7 +308,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>工廠生產重量</th><th>產品包數</th><th>現有庫存</th><th>安全量</th><th>庫存成本</th><th>狀態</th></tr></thead>
+              <thead><tr><th>圖片</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>工廠生產重量</th><th>產品包數</th><th>現有庫存</th><th>安全量</th><th>庫存成本</th><th>狀態</th></tr></thead>
               <tbody id="inventoryRows"></tbody>
             </table>
           </div>
@@ -390,7 +393,7 @@
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2>出貨紀錄</h2><span id="shipmentCount" class="pill">0 筆</span></div>
-            <div class="table-wrap"><table><thead><tr><th>單號</th><th>日期</th><th>國內合作商</th><th>產品編號</th><th>銷售產品</th><th>缸號</th><th>出貨包數</th><th>單包價格</th><th>小計</th><th>狀態</th><th></th></tr></thead><tbody id="shipmentRows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>單號</th><th>日期</th><th>國內合作商</th><th>產品編號</th><th>銷售產品</th><th>缸號</th><th>出貨包數</th><th>單包價格</th><th>小計</th><th>狀態</th><th></th></tr></thead><tbody id="shipmentRows"></tbody></table></div>
           </section>
         </div>
       </section>
@@ -415,7 +418,7 @@
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2>直播間銷售紀錄</h2><span id="liveSaleCount" class="pill">0 筆</span></div>
-            <div class="table-wrap"><table><thead><tr><th>日期</th><th>直播間</th><th>主播</th><th>產品編號</th><th>銷售產品</th><th>缸號</th><th>包數</th><th>單包售價</th><th>銷售額</th><th></th></tr></thead><tbody id="liveSaleRows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>日期</th><th>直播間</th><th>主播</th><th>產品編號</th><th>銷售產品</th><th>缸號</th><th>包數</th><th>單包售價</th><th>銷售額</th><th></th></tr></thead><tbody id="liveSaleRows"></tbody></table></div>
           </section>
         </div>
       </section>

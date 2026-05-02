@@ -88,6 +88,7 @@ function normalizeState(saved) {
     cost: Number(product.cost || 0),
     price: Number(product.price || 0),
     unit: product.type === "sale" ? "包" : product.unit,
+    imageData: product.imageData || "",
   }));
   next.partners = (next.partners || []).map((partner) => ({
     ...partner,
@@ -298,6 +299,18 @@ function vatOptions(select, productId) {
   select.innerHTML = vats.map((vat) => `<option value="${vat}">${vat}</option>`).join("") || `<option value="">尚無進貨缸號</option>`;
 }
 
+function productImage(product) {
+  return product?.imageData || "";
+}
+
+function productThumb(product, size = "table") {
+  const image = productImage(product);
+  const label = product?.name || "產品";
+  return image
+    ? `<img class="product-thumb ${size}" src="${image}" alt="${label}" loading="lazy" />`
+    : `<span class="product-thumb empty-thumb ${size}">無圖</span>`;
+}
+
 function syncSelects() {
   productOptions($("#purchaseProduct"), "purchase");
   productOptions($("#saleProduct"), "sale");
@@ -326,10 +339,11 @@ function renderProductCard(productId, targetId) {
   if (!target) return;
   const product = findProduct(productId);
   if (!product) {
-    target.innerHTML = `<span>銷售產品</span><strong>請先選擇產品</strong>`;
+    target.innerHTML = `<div class="summary-media">${productThumb(null, "card")}</div><div><span>銷售產品</span><strong>請先選擇產品</strong></div>`;
     return;
   }
   target.innerHTML = `
+    <div class="summary-media">${productThumb(product, "card")}</div>
     <div><span>產品編號</span><strong>${product.sku}</strong></div>
     <div><span>目前庫存</span><strong>${number(productStock(product.id))} 包</strong></div>
     <div><span>紗號 / 色號</span><strong>${product.yarnNo || "-"} / ${product.color || "-"}</strong></div>
@@ -431,6 +445,7 @@ function renderProducts() {
   $("#productListTitle").textContent = productTab === "saleGoods" ? "銷售產品清單" : "一般用品清單";
   $("#productCount").textContent = `${productTab === "saleGoods" ? saleRows.length : officeRows.length} 筆`;
   $("#sellProductRows").innerHTML = saleRows.map((product) => `<tr>
+    <td>${productThumb(product)}</td>
     <td>${product.sku}</td>
     <td>${product.name}</td>
     <td>${product.yarnNo || "-"}</td>
@@ -444,7 +459,7 @@ function renderProducts() {
     <td>${number(product.packageCount)} 包</td>
     <td class="num">${money(product.price)}</td>
     <td>${rowActions("product", product.id, true)}</td>
-  </tr>`).join("") || emptyRow(13);
+  </tr>`).join("") || emptyRow(14);
   $("#productRows").innerHTML = officeRows.map((product) => `<tr>
     <td>${product.sku}</td>
     <td>${product.name}</td>
@@ -488,6 +503,7 @@ function renderDocs(kind) {
   const count = kind === "purchase" ? $("#purchaseCount") : $("#saleCount");
   count.textContent = `${rows.length} 筆`;
   tbody.innerHTML = rows.map((doc) => `<tr>
+    <td>${productThumb(findProduct(doc.productId))}</td>
     <td>${doc.no}</td>
     <td>${doc.date}</td>
     <td>${doc.partnerName || "-"}</td>
@@ -500,7 +516,7 @@ function renderDocs(kind) {
     <td class="num">${money(doc.price)}</td>
     <td class="num">${money(Number(doc.qty) * Number(doc.price))}</td>
     <td>${rowActions(kind, doc.id)}</td>
-  </tr>`).join("") || emptyRow(12);
+  </tr>`).join("") || emptyRow(13);
 }
 
 function renderInventory() {
@@ -510,6 +526,7 @@ function renderInventory() {
     const stock = productStock(product.id);
     const status = stock <= 0 ? tag("缺貨", "out") : stock <= Number(product.minStock) ? tag("偏低", "warn") : tag("正常", "ok");
     return `<tr>
+      <td>${productThumb(product)}</td>
       <td>${product.sku}</td>
       <td>${product.name}</td>
       <td>${product.yarnNo || "-"}</td>
@@ -521,7 +538,7 @@ function renderInventory() {
       <td class="num">${money(stock * Number(product.cost))}</td>
       <td>${status}</td>
     </tr>`;
-  }).join("") || emptyRow(10);
+  }).join("") || emptyRow(11);
 }
 
 function progressMark(status, step) {
@@ -603,6 +620,7 @@ function renderShipments() {
     const product = findProduct(item.productId);
     const partner = findPartner(item.partnerId);
     return `<tr>
+    <td>${productThumb(product)}</td>
     <td>${item.no}</td>
     <td>${item.date}</td>
     <td>${partner?.customerName || partner?.name || item.customer || "-"}</td>
@@ -615,7 +633,7 @@ function renderShipments() {
     <td>${tag(item.status || "待出貨", "blue")}</td>
     <td>${rowActions("shipment", item.id)}</td>
   </tr>`;
-  }).join("") || emptyRow(11);
+  }).join("") || emptyRow(12);
 }
 
 function renderLiveSales() {
@@ -624,6 +642,7 @@ function renderLiveSales() {
   $("#liveSaleRows").innerHTML = rows.map((item) => {
     const product = findProduct(item.productId);
     return `<tr>
+      <td>${productThumb(product)}</td>
       <td>${item.date}</td>
       <td>${item.room || "-"}</td>
       <td>${item.host || "-"}</td>
@@ -635,7 +654,7 @@ function renderLiveSales() {
       <td class="num">${money(Number(item.qty) * Number(item.price))}</td>
       <td>${rowActions("liveSale", item.id)}</td>
     </tr>`;
-  }).join("") || emptyRow(10);
+  }).join("") || emptyRow(11);
 }
 
 function renderSettings() {
@@ -753,7 +772,10 @@ function fillForm(form, data) {
   Object.entries(data).forEach(([key, value]) => {
     if (form.elements[key]) form.elements[key].value = value;
   });
-  if (form.id === "sellProductForm") updatePackageCount();
+  if (form.id === "sellProductForm") {
+    updatePackageCount();
+    renderProductImagePreview(form.elements.imageData.value);
+  }
 }
 
 function resetForm(form) {
@@ -762,7 +784,9 @@ function resetForm(form) {
   if (form.elements.date) form.elements.date.value = today();
   if (form.id === "sellProductForm") {
     form.elements.sku.value = generateSaleSku();
+    form.elements.imageData.value = "";
     updatePackageCount();
+    renderProductImagePreview("");
   }
   if (form.id === "partnerForm") {
     form.elements.nationality.value = "台灣";
@@ -778,6 +802,31 @@ function updatePackageCount() {
   const qty = Number(form.elements.productQty.value || 0);
   const packSize = Number(form.elements.packSize.value || 0);
   form.elements.packageCount.value = packSize > 0 ? ceilNumber(qty / packSize) : 0;
+}
+
+function renderProductImagePreview(src) {
+  const preview = $("#productImagePreview");
+  if (!preview) return;
+  preview.innerHTML = src
+    ? `<img src="${src}" alt="產品圖片預覽" />`
+    : "尚未選擇圖片";
+}
+
+function handleProductImage(event) {
+  const file = event.target.files?.[0];
+  const form = $("#sellProductForm");
+  if (!file || !form) return;
+  if (!file.type.startsWith("image/")) {
+    toast("請選擇圖片檔");
+    event.target.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    form.elements.imageData.value = reader.result;
+    renderProductImagePreview(reader.result);
+  };
+  reader.readAsDataURL(file);
 }
 
 function updateDocProduct(formId, cardId, priceType) {
@@ -800,6 +849,7 @@ function upsertProduct(form) {
     cost: Number(data.cost),
     price: Number(data.price),
     minStock: Number(data.minStock),
+    imageData: data.imageData || "",
   };
   state.products = data.id ? state.products.map((item) => item.id === data.id ? payload : item) : [...state.products, payload];
   saveState();
@@ -832,6 +882,7 @@ function upsertSellProduct(form) {
     price: Number(data.price),
     minStock: Number(data.minStock || 0),
     note: data.note.trim(),
+    imageData: data.imageData || "",
   };
   state.products = data.id ? state.products.map((item) => item.id === data.id ? payload : item) : [...state.products, payload];
   saveState();
@@ -1376,6 +1427,7 @@ function bindEvents() {
   });
   $("#sellProductForm").elements.productQty.addEventListener("input", updatePackageCount);
   $("#sellProductForm").elements.packSize.addEventListener("input", updatePackageCount);
+  $("#productImageInput").addEventListener("change", handleProductImage);
   $("#globalSearch").addEventListener("input", (event) => {
     searchTerm = event.target.value.trim();
     renderAll();
