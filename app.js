@@ -1,6 +1,6 @@
 const STORAGE_KEY = "oa_inventory_state_v1";
 const SESSION_KEY = "oa_inventory_session_v1";
-const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "contracts", "leave", "tracking", "production", "settings"];
+const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "contracts", "leave", "approvals", "tracking", "production", "settings"];
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -35,6 +35,9 @@ const defaultState = () => ({
   shipments: [],
   staff: [],
   leaveRequests: [],
+  tripRequests: [],
+  purchaseRequests: [],
+  proposalRequests: [],
   announcements: [],
   settings: {
     positions: ["負責人", "主管", "執行負責", "品牌助理"],
@@ -52,6 +55,7 @@ let productTab = "saleGoods";
 let currentLang = "zh-TW";
 let staffTab = "regular";
 let knitterTab = "profiles";
+let approvalTab = "overview";
 let currentUser = null;
 
 function loadState() {
@@ -158,7 +162,24 @@ function normalizeState(saved) {
     price: Number(item.price || 0),
     imageData: item.imageData || "",
   }));
+  next.leaveRequests = (next.leaveRequests || []).map((item) => ({
+    ...item,
+    staffId: item.staffId || findStaffIdByName(next, item.name),
+    approverId: item.approverId || findApproverIdByName(next, item.approver),
+    status: item.status || "待審批",
+  }));
+  next.tripRequests = (next.tripRequests || []).map((item) => ({ ...item, amount: Number(item.amount || 0), status: item.status || "待審批" }));
+  next.purchaseRequests = (next.purchaseRequests || []).map((item) => ({ ...item, qty: Number(item.qty || 1), amount: Number(item.amount || 0), status: item.status || "待審批" }));
+  next.proposalRequests = (next.proposalRequests || []).map((item) => ({ ...item, status: item.status || "待審批" }));
   return next;
+}
+
+function findStaffIdByName(saved, name) {
+  return (saved?.staff || []).find((item) => item.name === name)?.id || "";
+}
+
+function findApproverIdByName(saved, name) {
+  return (saved?.staff || []).find((item) => item.name === name || item.title === name || item.role === name)?.id || "";
 }
 
 function findProductIn(saved, id) {
@@ -346,6 +367,20 @@ function positionOptions(select) {
   select.innerHTML = (state.settings?.positions || []).map((name) => `<option value="${name}">${name}</option>`).join("") || `<option value="">請先建立職位</option>`;
 }
 
+function staffOptions(select, supervisorsOnly = false) {
+  if (!select) return;
+  const rows = (state.staff || []).filter((item) => {
+    if (item.status === "離職") return false;
+    if (!supervisorsOnly) return true;
+    return ["主管", "管理員", "老闆"].includes(item.role) || ["負責人", "主管"].some((key) => String(item.title || "").includes(key));
+  });
+  select.innerHTML = rows.map((item) => `<option value="${item.id}">${item.name} · ${item.title || item.role || "人事"}</option>`).join("") || `<option value="">請先建立人事資料</option>`;
+}
+
+function staffName(id, fallback = "-") {
+  return (state.staff || []).find((item) => item.id === id)?.name || fallback;
+}
+
 function vatOptions(select, productId) {
   const product = findProduct(productId);
   const vats = [...new Set([
@@ -396,6 +431,8 @@ function syncSelects() {
   partnerOptions($("#shipmentPartner"), "customer");
   liveShowOptions($("#liveSaleShow"));
   positionOptions($("#staffTitle"));
+  ["leaveStaff", "tripStaff", "purchaseRequestStaff", "proposalStaff"].forEach((id) => staffOptions($(`#${id}`)));
+  ["leaveApprover", "tripApprover", "purchaseRequestApprover", "proposalApprover"].forEach((id) => staffOptions($(`#${id}`), true));
   knitterOptions($("#sampleKnitter"));
   renderProductCard($("#purchaseProduct")?.value, "purchaseProductCard");
   renderProductCard($("#saleProduct")?.value, "saleProductCard");
@@ -823,14 +860,50 @@ function renderLeave() {
   $("#leaveCount").textContent = `${rows.length} 筆`;
   $("#leaveRows").innerHTML = rows.map((item) => `<tr>
     <td>${item.code}</td>
-    <td>${item.name}</td>
+    <td>${staffName(item.staffId, item.name || "-")}</td>
     <td>${item.type || "-"}</td>
     <td>${item.startDate} ~ ${item.endDate}</td>
     <td>${number(item.days)}</td>
     <td>${tag(item.status, item.status === "已通過" ? "ok" : item.status === "已駁回" ? "out" : "warn")}</td>
-    <td>${item.approver || "-"}</td>
+    <td>${staffName(item.approverId, item.approver || "-")}</td>
     <td>${rowActions("leave", item.id)}</td>
   </tr>`).join("") || emptyRow(8);
+}
+
+function approvalStatusActions(type, id, status) {
+  if (status !== "待審批") return "";
+  return `<button class="small-btn" data-approve="${type}" data-id="${id}" aria-label="通過"><i data-lucide="check"></i></button><button class="small-btn delete" data-reject="${type}" data-id="${id}" aria-label="駁回"><i data-lucide="x"></i></button>`;
+}
+
+function approvalRows() {
+  return [
+    ...(state.leaveRequests || []).map((item) => ({ type: "leave", typeName: "請假", id: item.id, code: item.code, staffId: item.staffId, title: item.type || "請假申請", date: `${item.startDate || "-"} ~ ${item.endDate || "-"}`, amount: `${number(item.days)} 天`, approverId: item.approverId, status: item.status || "待審批", createdAt: item.createdAt || 0 })),
+    ...(state.tripRequests || []).map((item) => ({ type: "trip", typeName: "出差", id: item.id, code: item.code, staffId: item.staffId, title: item.destination, date: `${item.startDate || "-"} ~ ${item.endDate || "-"}`, amount: money(item.amount), approverId: item.approverId, status: item.status || "待審批", createdAt: item.createdAt || 0 })),
+    ...(state.purchaseRequests || []).map((item) => ({ type: "purchaseRequest", typeName: "採購", id: item.id, code: item.code, staffId: item.staffId, title: item.item, date: "-", amount: money(item.amount), approverId: item.approverId, status: item.status || "待審批", createdAt: item.createdAt || 0 })),
+    ...(state.proposalRequests || []).map((item) => ({ type: "proposal", typeName: "提案", id: item.id, code: item.code, staffId: item.staffId, title: item.title, date: "-", amount: item.benefit || "-", approverId: item.approverId, status: item.status || "待審批", createdAt: item.createdAt || 0 })),
+  ].sort((a, b) => b.createdAt - a.createdAt);
+}
+
+function renderApprovals() {
+  const allRows = currentRows(approvalRows());
+  $("#approvalCount").textContent = `${allRows.length} 筆`;
+  $("#approvalRows").innerHTML = allRows.map((item) => `<tr>
+    <td>${item.typeName}</td><td>${item.code}</td><td>${staffName(item.staffId)}</td><td>${item.title || "-"}</td><td>${item.date}</td><td>${item.amount}</td><td>${staffName(item.approverId)}</td>
+    <td>${tag(item.status, item.status === "已通過" ? "ok" : item.status === "已駁回" ? "out" : "warn")}</td>
+    <td><div class="row-actions">${approvalStatusActions(item.type, item.id, item.status)}</div></td>
+  </tr>`).join("") || emptyRow(9);
+
+  const trips = currentRows(state.tripRequests || []).sort((a, b) => b.createdAt - a.createdAt);
+  $("#tripCount").textContent = `${trips.length} 筆`;
+  $("#tripRows").innerHTML = trips.map((item) => `<tr><td>${item.code}</td><td>${staffName(item.staffId)}</td><td>${item.destination}</td><td>${item.startDate} ~ ${item.endDate}</td><td class="num">${money(item.amount)}</td><td>${staffName(item.approverId)}</td><td>${tag(item.status, item.status === "已通過" ? "ok" : item.status === "已駁回" ? "out" : "warn")}</td><td>${rowActions("trip", item.id)}</td></tr>`).join("") || emptyRow(8);
+
+  const purchases = currentRows(state.purchaseRequests || []).sort((a, b) => b.createdAt - a.createdAt);
+  $("#purchaseRequestCount").textContent = `${purchases.length} 筆`;
+  $("#purchaseRequestRows").innerHTML = purchases.map((item) => `<tr><td>${item.code}</td><td>${staffName(item.staffId)}</td><td>${item.item}</td><td>${number(item.qty)}</td><td class="num">${money(item.amount)}</td><td>${staffName(item.approverId)}</td><td>${tag(item.status, item.status === "已通過" ? "ok" : item.status === "已駁回" ? "out" : "warn")}</td><td>${rowActions("purchaseRequest", item.id)}</td></tr>`).join("") || emptyRow(8);
+
+  const proposals = currentRows(state.proposalRequests || []).sort((a, b) => b.createdAt - a.createdAt);
+  $("#proposalCount").textContent = `${proposals.length} 筆`;
+  $("#proposalRows").innerHTML = proposals.map((item) => `<tr><td>${item.code}</td><td>${staffName(item.staffId)}</td><td>${item.title}</td><td>${item.benefit || "-"}</td><td>${staffName(item.approverId)}</td><td>${tag(item.status, item.status === "已通過" ? "ok" : item.status === "已駁回" ? "out" : "warn")}</td><td>${rowActions("proposal", item.id)}</td></tr>`).join("") || emptyRow(7);
 }
 
 function renderAll() {
@@ -849,6 +922,7 @@ function renderAll() {
   renderKnitters();
   renderStaff();
   renderLeave();
+  renderApprovals();
   renderSettings();
   if (window.lucide) window.lucide.createIcons();
   if (currentLang === "zh-CN") applyLanguage();
@@ -882,6 +956,13 @@ function setKnitterTab(tab) {
   renderKnitters();
 }
 
+function setApprovalTab(tab) {
+  approvalTab = tab;
+  $$("[data-approval-tab]").forEach((button) => button.classList.toggle("active", button.dataset.approvalTab === tab));
+  $$("[data-approval-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.approvalPanel === tab));
+  renderApprovals();
+}
+
 function setAuthTab(tab) {
   $$("[data-auth-tab]").forEach((button) => button.classList.toggle("active", button.dataset.authTab === tab));
   $$("[data-auth-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.authPanel === tab));
@@ -910,6 +991,8 @@ function resetForm(form) {
   if (form.elements.date) form.elements.date.value = today();
   if (form.elements.contractDate) form.elements.contractDate.value = today();
   if (form.elements.receivedDate) form.elements.receivedDate.value = today();
+  if (form.elements.startDate) form.elements.startDate.value = today();
+  if (form.elements.endDate) form.elements.endDate.value = today();
   if (form.id === "sellProductForm") {
     form.elements.sku.value = generateSaleSku();
     form.elements.imageData.value = "";
@@ -1160,7 +1243,7 @@ function deleteItem(type, id) {
       ? state.purchases.some((doc) => doc.partnerId === id) || state.sales.some((doc) => doc.partnerId === id)
       : false;
   if (hasDoc) return toast("已有單據使用，請保留資料");
-  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples" };
+  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests" };
   state[map[type]] = state[map[type]].filter((item) => item.id !== id);
   saveState();
   toast("資料已刪除");
@@ -1174,6 +1257,30 @@ function addGeneric(form, key, prefix, transform = (data) => data) {
   saveState();
   resetForm(form);
   toast("資料已新增");
+  renderAll();
+}
+
+function addApprovalRequest(form, key, prefix, transform) {
+  const data = Object.fromEntries(new FormData(form));
+  const payload = {
+    ...transform(data),
+    status: "待審批",
+    comment: "",
+  };
+  state[key] = [...(state[key] || []), { id: uid(prefix), createdAt: Date.now(), ...payload }];
+  saveState();
+  resetForm(form);
+  toast("申請已送出");
+  renderAll();
+}
+
+function approveRequest(type, id, status) {
+  const map = { leave: "leaveRequests", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests" };
+  const key = map[type];
+  if (!key) return;
+  state[key] = (state[key] || []).map((item) => item.id === id ? { ...item, status, approvedAt: Date.now() } : item);
+  saveState();
+  toast(status === "已通過" ? "審批已通過" : "審批已駁回");
   renderAll();
 }
 
@@ -1417,6 +1524,7 @@ function reportContent(view) {
     shipping: "出貨單報表",
     staff: "人事資料報表",
     leave: "請假申請報表",
+    approvals: "審批系統報表",
     settings: "資料設定報表",
   };
   const saleProducts = state.products.filter((product) => product.type === "sale");
@@ -1464,7 +1572,8 @@ function reportContent(view) {
     ]),
     shipping: () => reportTable(["單號", "日期", "國內合作商", "產品編號", "銷售產品", "缸號", "出貨包數", "單包價格", "小計", "狀態"], (state.shipments || []).map((p) => { const product = findProduct(p.productId); const partner = findPartner(p.partnerId); return [p.no, p.date, partner?.customerName || partner?.name || p.customer, product?.sku, product?.name || p.productName, p.vat, `${number(p.qty)} 包`, money(p.price), money(Number(p.qty) * Number(p.price)), p.status]; })),
     staff: () => reportTable(["編號", "姓名", "部門", "職位", "角色", "電話", "狀態"], (state.staff || []).map((p) => [p.code, p.name, p.dept, p.title, p.role, p.phone, p.status])),
-    leave: () => reportTable(["編號", "姓名", "類型", "開始日期", "結束日期", "天數", "狀態", "審批人"], (state.leaveRequests || []).map((p) => [p.code, p.name, p.type, p.startDate, p.endDate, p.days, p.status, p.approver])),
+    leave: () => reportTable(["編號", "姓名", "類型", "開始日期", "結束日期", "天數", "狀態", "審批人"], (state.leaveRequests || []).map((p) => [p.code, staffName(p.staffId, p.name || "-"), p.type, p.startDate, p.endDate, p.days, p.status, staffName(p.approverId, p.approver || "-")])),
+    approvals: () => reportTable(["類型", "編號", "申請人", "主旨", "日期", "金額/天數", "主管機關", "狀態"], approvalRows().map((p) => [p.typeName, p.code, staffName(p.staffId), p.title, p.date, p.amount, staffName(p.approverId), p.status])),
     settings: () => reportTable(["職位名稱"], (state.settings?.positions || []).map((name) => [name])),
   };
 
@@ -1626,6 +1735,7 @@ function bindEvents() {
   $$("[data-action='goto']").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   $$("[data-product-tab]").forEach((button) => button.addEventListener("click", () => setProductTab(button.dataset.productTab)));
   $$("[data-knitter-tab]").forEach((button) => button.addEventListener("click", () => setKnitterTab(button.dataset.knitterTab)));
+  $$("[data-approval-tab]").forEach((button) => button.addEventListener("click", () => setApprovalTab(button.dataset.approvalTab)));
   $$("[data-setting-tab]").forEach((button) => button.addEventListener("click", () => setSettingTab(button.dataset.settingTab)));
   $$("[data-staff-tab]").forEach((button) => button.addEventListener("click", () => setStaffTab(button.dataset.staffTab)));
   $$("[data-auth-tab]").forEach((button) => button.addEventListener("click", () => setAuthTab(button.dataset.authTab)));
@@ -1737,14 +1847,30 @@ function bindEvents() {
   });
   $("#leaveForm").addEventListener("submit", (event) => {
     event.preventDefault();
-    addGeneric(event.currentTarget, "leaveRequests", "lev", (data) => ({ ...data, days: Number(data.days) }));
+    addApprovalRequest(event.currentTarget, "leaveRequests", "lev", (data) => ({ ...data, name: staffName(data.staffId), approver: staffName(data.approverId), days: Number(data.days) }));
+  });
+  $("#tripForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addApprovalRequest(event.currentTarget, "tripRequests", "trip", (data) => ({ ...data, amount: Number(data.amount || 0) }));
+  });
+  $("#purchaseRequestForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addApprovalRequest(event.currentTarget, "purchaseRequests", "pr", (data) => ({ ...data, qty: Number(data.qty || 1), amount: Number(data.amount || 0) }));
+  });
+  $("#proposalForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addApprovalRequest(event.currentTarget, "proposalRequests", "prop", (data) => ({ ...data }));
   });
 
   document.addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit]");
     const del = event.target.closest("[data-delete]");
+    const approve = event.target.closest("[data-approve]");
+    const reject = event.target.closest("[data-reject]");
     if (edit) editItem(edit.dataset.edit, edit.dataset.id);
     if (del) deleteItem(del.dataset.delete, del.dataset.id);
+    if (approve) approveRequest(approve.dataset.approve, approve.dataset.id, "已通過");
+    if (reject) approveRequest(reject.dataset.reject, reject.dataset.id, "已駁回");
   });
   document.addEventListener("change", (event) => {
     const checkbox = event.target.closest("[data-permission-user]");
@@ -1798,6 +1924,9 @@ async function init() {
   resetForm($("#sampleForm"));
   resetForm($("#staffForm"));
   resetForm($("#leaveForm"));
+  resetForm($("#tripForm"));
+  resetForm($("#purchaseRequestForm"));
+  resetForm($("#proposalForm"));
   renderAll();
   setView(activeView);
   applyPermissions();

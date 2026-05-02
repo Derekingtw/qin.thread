@@ -204,15 +204,15 @@ body.locked .app { filter: blur(5px); pointer-events: none; }
 
 .brand-slogan {
   margin: 10px 0 0;
-  color: #b6251a;
+  color: #7f2a21;
   font-family: "DFKai-SB", "KaiTi", "Microsoft JhengHei", serif;
   font-size: 22px;
   font-weight: 900;
   line-height: 1.55;
   text-shadow:
     0 1px 0 rgba(255,255,255,.92),
-    0 0 12px rgba(32, 220, 224, .6),
-    0 0 2px rgba(159,47,36,.58);
+    0 0 10px rgba(32, 220, 224, .36),
+    0 0 1px rgba(95,35,27,.5);
 }
 
 h1, h2 { margin: 0; letter-spacing: 0; }
@@ -616,6 +616,7 @@ input[type="file"] {
 .setting-editor,
 .setting-panel,
 .knitter-panel,
+.approval-panel,
 .staff-extra {
   display: none;
 }
@@ -627,11 +628,13 @@ input[type="file"] {
 
 .product-list.active,
 .setting-panel.active,
-.knitter-panel.active {
+.knitter-panel.active,
+.approval-panel.active {
   display: block;
 }
 
-.knitter-panel.workspace.active {
+.knitter-panel.workspace.active,
+.approval-panel.workspace.active {
   display: grid;
 }
 

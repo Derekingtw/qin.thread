@@ -53,6 +53,7 @@
         <button class="nav-item" data-view="staff"><i data-lucide="id-card"></i><span>人事資料</span></button>
         <button class="nav-item" data-view="contracts"><i data-lucide="file-signature"></i><span>合同</span></button>
         <button class="nav-item" data-view="leave"><i data-lucide="calendar-check"></i><span>請假申請</span></button>
+        <button class="nav-item" data-view="approvals"><i data-lucide="stamp"></i><span>審批系統</span></button>
         <button class="nav-item" data-view="tracking"><i data-lucide="route"></i><span>貨品追蹤</span></button>
         <button class="nav-item" data-view="production"><i data-lucide="workflow"></i><span>生產圖</span></button>
         <button class="nav-item" data-view="settings"><i data-lucide="settings"></i><span>資料設定</span></button>
@@ -591,7 +592,7 @@
           <form class="editor" id="leaveForm">
             <h2>請假申請</h2>
             <label>申請編號<input required name="code" placeholder="L001" /></label>
-            <label>姓名<input required name="name" /></label>
+            <label>姓名<select required name="staffId" id="leaveStaff"></select></label>
             <label>類型<input name="type" placeholder="事假" /></label>
             <div class="two-col">
               <label>開始日期<input required name="startDate" type="date" /></label>
@@ -599,14 +600,78 @@
             </div>
             <label>天數<input required name="days" type="number" min="0" step="0.5" /></label>
             <label>原因<input name="reason" /></label>
-            <label>狀態<select name="status"><option>待審批</option><option>已通過</option><option>已駁回</option></select></label>
-            <label>審批人<input name="approver" /></label>
-            <label>審批意見<input name="comment" /></label>
-            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+            <label>主管機關<select name="approverId" id="leaveApprover"></select></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>送出申請</span></button>
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2>請假紀錄</h2><span id="leaveCount" class="pill">0 筆</span></div>
             <div class="table-wrap"><table><thead><tr><th>編號</th><th>姓名</th><th>類型</th><th>日期</th><th>天數</th><th>狀態</th><th>審批人</th><th></th></tr></thead><tbody id="leaveRows"></tbody></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="approvals">
+        <div class="section-tabs" role="tablist" aria-label="審批系統分類">
+          <button class="section-tab active" data-approval-tab="overview" type="button">審批總表</button>
+          <button class="section-tab" data-approval-tab="trip" type="button">出差申請</button>
+          <button class="section-tab" data-approval-tab="purchase" type="button">採購申請</button>
+          <button class="section-tab" data-approval-tab="proposal" type="button">提案申請</button>
+        </div>
+        <section class="panel approval-panel active" data-approval-panel="overview">
+          <div class="panel-head"><h2>審批總表</h2><span id="approvalCount" class="pill">0 筆</span></div>
+          <div class="table-wrap"><table><thead><tr><th>類型</th><th>編號</th><th>申請人</th><th>主旨</th><th>日期</th><th>金額/天數</th><th>主管機關</th><th>狀態</th><th></th></tr></thead><tbody id="approvalRows"></tbody></table></div>
+        </section>
+        <div class="workspace approval-panel" data-approval-panel="trip">
+          <form class="editor" id="tripForm">
+            <h2>出差申請</h2>
+            <label>申請編號<input required name="code" placeholder="TRIP-001" /></label>
+            <label>申請人<select required name="staffId" id="tripStaff"></select></label>
+            <label>出差地點<input required name="destination" placeholder="上海 / 廣州" /></label>
+            <div class="two-col">
+              <label>開始日期<input required name="startDate" type="date" /></label>
+              <label>結束日期<input required name="endDate" type="date" /></label>
+            </div>
+            <label>預估費用<input name="amount" type="number" min="0" step="1" /></label>
+            <label>主管機關<select name="approverId" id="tripApprover"></select></label>
+            <label>事由<input name="reason" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>送出申請</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>出差申請紀錄</h2><span id="tripCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>編號</th><th>申請人</th><th>地點</th><th>日期</th><th>預估費用</th><th>主管機關</th><th>狀態</th><th></th></tr></thead><tbody id="tripRows"></tbody></table></div>
+          </section>
+        </div>
+        <div class="workspace approval-panel" data-approval-panel="purchase">
+          <form class="editor" id="purchaseRequestForm">
+            <h2>採購申請</h2>
+            <label>申請編號<input required name="code" placeholder="PR-001" /></label>
+            <label>申請人<select required name="staffId" id="purchaseRequestStaff"></select></label>
+            <label>採購品項<input required name="item" placeholder="設備 / 耗材 / 樣品" /></label>
+            <label>數量<input name="qty" type="number" min="1" step="1" value="1" /></label>
+            <label>預估金額<input name="amount" type="number" min="0" step="1" /></label>
+            <label>主管機關<select name="approverId" id="purchaseRequestApprover"></select></label>
+            <label>用途<input name="reason" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>送出申請</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>採購申請紀錄</h2><span id="purchaseRequestCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>編號</th><th>申請人</th><th>品項</th><th>數量</th><th>金額</th><th>主管機關</th><th>狀態</th><th></th></tr></thead><tbody id="purchaseRequestRows"></tbody></table></div>
+          </section>
+        </div>
+        <div class="workspace approval-panel" data-approval-panel="proposal">
+          <form class="editor" id="proposalForm">
+            <h2>提案申請</h2>
+            <label>申請編號<input required name="code" placeholder="PROP-001" /></label>
+            <label>提案人<select required name="staffId" id="proposalStaff"></select></label>
+            <label>提案主旨<input required name="title" /></label>
+            <label>提案內容<input required name="content" /></label>
+            <label>預估效益<input name="benefit" /></label>
+            <label>主管機關<select name="approverId" id="proposalApprover"></select></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>送出申請</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>提案申請紀錄</h2><span id="proposalCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>編號</th><th>提案人</th><th>主旨</th><th>效益</th><th>主管機關</th><th>狀態</th><th></th></tr></thead><tbody id="proposalRows"></tbody></table></div>
           </section>
         </div>
       </section>
