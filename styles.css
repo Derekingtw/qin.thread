@@ -163,6 +163,8 @@ body.locked .app { filter: blur(5px); pointer-events: none; }
   padding: 28px;
   position: relative;
   color: var(--ink);
+  z-index: 0;
+  isolation: isolate;
 }
 
 .app::before {
@@ -170,6 +172,7 @@ body.locked .app { filter: blur(5px); pointer-events: none; }
   position: fixed;
   inset: 0 0 0 260px;
   pointer-events: none;
+  z-index: -1;
   background:
     radial-gradient(ellipse at 88% 8%, rgba(32, 220, 224, .2), transparent 30%),
     radial-gradient(ellipse at 18% 18%, rgba(159, 47, 36, .12), transparent 28%),
@@ -183,6 +186,12 @@ body.locked .app { filter: blur(5px); pointer-events: none; }
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 24px;
+  padding: 14px 16px;
+  border: 1px solid rgba(32, 220, 224, .28);
+  border-radius: 12px;
+  background: rgba(255, 253, 245, .88);
+  box-shadow: 0 14px 38px rgba(35, 44, 38, .12);
+  backdrop-filter: blur(14px);
 }
 
 .eyebrow {
@@ -896,12 +905,12 @@ tr:last-child td { border-bottom: 0; }
     z-index: 20;
     padding: 16px 16px 14px;
     margin: -10px -10px 14px;
-    border: 1px solid rgba(32,220,224,.24);
+    border: 1px solid rgba(32,220,224,.34);
     border-radius: 0 0 18px 18px;
     background:
-      linear-gradient(135deg, rgba(255,253,245,.98), rgba(230,249,245,.92)),
+      linear-gradient(135deg, rgba(255,253,245,.98), rgba(230,249,245,.96)),
       rgba(255,255,255,.9);
-    box-shadow: 0 14px 30px rgba(29,42,37,.1);
+    box-shadow: 0 14px 30px rgba(29,42,37,.14);
     backdrop-filter: blur(16px);
   }
   .eyebrow { font-size: 13px; }
