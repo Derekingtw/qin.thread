@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: qinxian-oa
+    env: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    disk:
+      name: qinxian-oa-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1

@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OA 進銷存系統</title>
+    <link rel="stylesheet" href="styles.css?v=20260502-11" />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  </head>
+  <body>
+    <div class="auth-screen" id="authScreen">
+      <section class="auth-card">
+        <div class="auth-brand">
+          <span class="brand-mark"><object data="assets/qinxian-logo.ai" type="application/pdf" aria-label="秦時線 Logo">秦</object></span>
+          <div><strong>秦時線 OA</strong><small>請登入或註冊使用系統</small></div>
+        </div>
+        <div class="section-tabs">
+          <button class="section-tab active" data-auth-tab="login" type="button">登入</button>
+          <button class="section-tab" data-auth-tab="register" type="button">註冊</button>
+        </div>
+        <form class="auth-form active" id="loginForm" data-auth-panel="login">
+          <label>帳號<input required name="username" autocomplete="username" /></label>
+          <label>密碼<input required name="password" type="password" autocomplete="current-password" /></label>
+          <button class="primary-btn" type="submit"><i data-lucide="log-in"></i><span>登入</span></button>
+        </form>
+        <form class="auth-form" id="registerForm" data-auth-panel="register">
+          <label>姓名<input required name="name" /></label>
+          <label>帳號<input required name="username" autocomplete="username" /></label>
+          <label>密碼<input required name="password" type="password" autocomplete="new-password" /></label>
+          <button class="primary-btn" type="submit"><i data-lucide="user-plus"></i><span>註冊</span></button>
+        </form>
+      </section>
+    </div>
+    <aside class="sidebar">
+      <div class="brand">
+        <button class="brand-mark brand-home" id="brandHome" type="button" aria-label="回到首頁"><object data="assets/qinxian-logo.ai" type="application/pdf" aria-label="秦時線 Logo">秦</object></button>
+        <div>
+          <strong>秦時線</strong>
+          <small>進銷存 OA</small>
+        </div>
+      </div>
+      <nav class="nav" aria-label="主要導覽">
+        <button class="nav-item active" data-view="dashboard"><i data-lucide="layout-dashboard"></i><span>總覽</span></button>
+        <button class="nav-item" data-view="products"><i data-lucide="package"></i><span>商品</span></button>
+        <button class="nav-item" data-view="inventory"><i data-lucide="warehouse"></i><span>庫存</span></button>
+        <button class="nav-item" data-view="purchases"><i data-lucide="truck"></i><span>進貨</span></button>
+        <button class="nav-item" data-view="sales"><i data-lucide="shopping-cart"></i><span>銷貨</span></button>
+        <button class="nav-item" data-view="shipping"><i data-lucide="clipboard-list"></i><span>出貨單</span></button>
+        <button class="nav-item" data-view="liveSales"><i data-lucide="badge-dollar-sign"></i><span>直播間銷售</span></button>
+        <button class="nav-item" data-view="live"><i data-lucide="radio"></i><span>直播對應</span></button>
+        <button class="nav-item" data-view="partners"><i data-lucide="users"></i><span>往來單位</span></button>
+        <button class="nav-item" data-view="staff"><i data-lucide="id-card"></i><span>人事資料</span></button>
+        <button class="nav-item" data-view="contracts"><i data-lucide="file-signature"></i><span>合同</span></button>
+        <button class="nav-item" data-view="leave"><i data-lucide="calendar-check"></i><span>請假申請</span></button>
+        <button class="nav-item" data-view="tracking"><i data-lucide="route"></i><span>貨品追蹤</span></button>
+        <button class="nav-item" data-view="production"><i data-lucide="workflow"></i><span>生產圖</span></button>
+        <button class="nav-item" data-view="settings"><i data-lucide="settings"></i><span>資料設定</span></button>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="ghost-btn" id="seedBtn"><i data-lucide="sparkles"></i><span>範例資料</span></button>
+        <button class="ghost-btn danger" id="resetBtn"><i data-lucide="trash-2"></i><span>清空</span></button>
+      </div>
+    </aside>
+
+    <main class="app">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">秦時線 · 水墨營運中台</p>
+          <h1 id="viewTitle">總覽</h1>
+        </div>
+        <div class="top-actions">
+          <label class="search">
+            <i data-lucide="search"></i>
+            <input id="globalSearch" type="search" placeholder="搜尋商品、單號、單位" />
+          </label>
+          <button class="ghost-light-btn" id="reportBtn"><i data-lucide="printer"></i><span>報表列印</span></button>
+          <button class="ghost-light-btn" id="langBtn"><i data-lucide="languages"></i><span>简体</span></button>
+          <button class="ghost-light-btn" id="logoutBtn"><i data-lucide="log-out"></i><span>登出</span></button>
+          <button class="primary-btn" id="quickSaleBtn"><i data-lucide="plus"></i><span>銷貨單</span></button>
+        </div>
+      </header>
+
+      <section class="view active" id="dashboard">
+        <div class="metrics">
+          <article class="metric">
+            <span>庫存總成本</span>
+            <strong id="stockValue">$0</strong>
+          </article>
+          <article class="metric">
+            <span>本月進貨</span>
+            <strong id="monthPurchase">$0</strong>
+          </article>
+          <article class="metric">
+            <span>本月銷貨</span>
+            <strong id="monthSale">$0</strong>
+          </article>
+          <article class="metric warning">
+            <span>低庫存品項</span>
+            <strong id="lowStockCount">0</strong>
+          </article>
+        </div>
+        <section class="panel dashboard-announcements">
+          <div class="panel-head">
+            <h2>公告區</h2>
+            <span class="pill" id="announcementCount">0 則</span>
+          </div>
+          <form class="inline-form admin-only" id="announcementForm">
+            <input name="title" placeholder="公告標題" required />
+            <input name="content" placeholder="公告內容" required />
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增公告</span></button>
+          </form>
+          <div class="announcement-list" id="announcementRows"></div>
+        </section>
+        <div class="dashboard-grid">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>低庫存提醒</h2>
+              <button class="icon-btn" data-action="goto" data-view="inventory" aria-label="查看庫存"><i data-lucide="arrow-right"></i></button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>商品</th><th>現有</th><th>安全量</th><th>狀態</th></tr></thead>
+                <tbody id="lowStockRows"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>最近單據</h2>
+              <button class="icon-btn" data-action="goto" data-view="sales" aria-label="查看銷貨"><i data-lucide="arrow-right"></i></button>
+            </div>
+            <div class="activity" id="recentDocs"></div>
+          </section>
+        </div>
+        <div class="dashboard-grid dashboard-extra">
+          <section class="panel">
+            <div class="panel-head"><h2>合夥員工名單</h2><span class="pill" id="partnerStaffCount">0 人</span></div>
+            <div class="activity" id="partnerStaffRows"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2>直播間排程表</h2><span class="pill" id="simpleLiveCount">0 場</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>直播時間</th><th>主播</th><th>狀態</th></tr></thead>
+                <tbody id="simpleLiveRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="products">
+        <div class="section-tabs" role="tablist" aria-label="商品分類">
+          <button class="section-tab active" data-product-tab="saleGoods" type="button">銷售產品</button>
+          <button class="section-tab" data-product-tab="officeGoods" type="button">一般用品</button>
+        </div>
+        <div class="workspace">
+          <form class="editor product-editor active" id="sellProductForm" data-product-panel="saleGoods">
+            <h2>銷售產品</h2>
+            <input type="hidden" name="id" />
+            <label>商品編號<input required readonly name="sku" placeholder="系統自動生成" /></label>
+            <label>紗號<input required name="yarnNo" placeholder="YJ-26S" /></label>
+            <label>支數<input name="count" placeholder="2/26NM" /></label>
+            <label>成分<input name="composition" placeholder="100% 羊絨" /></label>
+            <label>品名<input required name="name" placeholder="雲錦羊絨" /></label>
+            <label>色號<input name="color" placeholder="米杏 103" /></label>
+            <label>缸號<input name="vat" placeholder="A260501" /></label>
+            <div class="two-col">
+              <label>工廠生產重量<span class="unit-field"><input required name="factoryWeight" type="number" min="0" step="0.1" /><b>KG</b></span></label>
+              <label>產品數量<span class="unit-field"><input required name="productQty" type="number" min="0" step="1" /><b>團</b></span></label>
+            </div>
+            <div class="two-col">
+              <label>單包團數<span class="unit-field"><input required name="packSize" type="number" min="1" step="1" /><b>團</b></span></label>
+              <label>產品包數<span class="unit-field"><input readonly name="packageCount" type="number" min="0" step="1" /><b>包</b></span></label>
+            </div>
+            <div class="two-col">
+              <label>進價<input name="cost" type="number" min="0" step="1" /></label>
+              <label>售價<input required name="price" type="number" min="0" step="1" /></label>
+            </div>
+            <label>安全庫存<input name="minStock" type="number" min="0" step="1" value="0" /></label>
+            <label>備註<input name="note" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
+          </form>
+          <form class="editor product-editor" id="productForm" data-product-panel="officeGoods">
+            <h2>一般用品</h2>
+            <input type="hidden" name="id" />
+            <label>品號<input required name="sku" placeholder="PRD-001" /></label>
+            <label>品名<input required name="name" placeholder="A4 影印紙" /></label>
+            <label>分類<input name="category" placeholder="辦公用品" /></label>
+            <label>單位<input name="unit" placeholder="箱" /></label>
+            <div class="two-col">
+              <label>進價<input required name="cost" type="number" min="0" step="1" /></label>
+              <label>售價<input required name="price" type="number" min="0" step="1" /></label>
+            </div>
+            <label>安全庫存<input required name="minStock" type="number" min="0" step="1" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2 id="productListTitle">銷售產品清單</h2><span id="productCount" class="pill">0 筆</span></div>
+            <div class="table-wrap product-list active" data-product-panel="saleGoods">
+              <table>
+                <thead><tr><th>編號</th><th>品名</th><th>紗號</th><th>支數</th><th>成分</th><th>色號</th><th>缸號</th><th>工廠生產重量</th><th>產品數量</th><th>單包團數</th><th>產品包數</th><th>售價</th><th></th></tr></thead>
+                <tbody id="sellProductRows"></tbody>
+              </table>
+            </div>
+            <div class="table-wrap product-list" data-product-panel="officeGoods">
+              <table>
+                <thead><tr><th>品號</th><th>品名</th><th>分類</th><th>進價</th><th>售價</th><th>安全量</th><th></th></tr></thead>
+                <tbody id="productRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="partners">
+        <div class="workspace">
+          <form class="editor" id="partnerForm">
+            <h2>往來單位</h2>
+            <input type="hidden" name="id" />
+            <label>工廠類別<select name="factoryType"><option value="">未指定</option><option>原料廠</option><option>染廠</option><option>倒筒廠</option><option>打團廠</option></select></label>
+            <label>國內合作商類別<select name="partnerType"><option value="">未指定</option><option>批發商</option><option>經銷商</option><option>達人</option><option>分店</option></select></label>
+            <label>客戶名稱<input name="customerName" placeholder="客戶自行填寫" /></label>
+            <label>公司名稱<input name="name" placeholder="秦時線合作單位" /></label>
+            <label>聯絡人<input name="contact" placeholder="王小姐" /></label>
+            <label>電話<input name="phone" placeholder="02-0000-0000" /></label>
+            <label>E-MAIL<input name="email" type="email" placeholder="name@example.com" /></label>
+            <label>會計師<input name="accountant" placeholder="會計窗口" /></label>
+            <label>老闆<input name="owner" placeholder="負責人" /></label>
+            <label>國籍<select name="nationality"><option>台灣</option><option>中國</option><option>越南</option><option>義大利</option><option>西班牙</option><option>美國</option></select></label>
+            <label>地址<input name="address" placeholder="台北市..." /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>單位清單</h2><span id="partnerCount" class="pill">0 筆</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>工廠類別</th><th>合作商類別</th><th>客戶名稱</th><th>公司名稱</th><th>聯絡人</th><th>電話</th><th>E-MAIL</th><th>會計師</th><th>老闆</th><th>國籍</th><th></th></tr></thead>
+                <tbody id="partnerRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="purchases">
+        <div class="workspace">
+          <form class="editor" id="purchaseForm">
+            <h2>進貨單</h2>
+            <label>工廠單位<select required name="partnerId" id="purchasePartner"></select></label>
+            <label>銷售產品<select required name="productId" id="purchaseProduct"></select></label>
+            <label>缸號<input name="vat" id="purchaseVat" placeholder="自填缸號" /></label>
+            <div class="product-summary" id="purchaseProductCard"></div>
+            <div class="two-col">
+              <label>進貨包數<span class="unit-field"><input required name="qty" type="number" min="1" step="1" /><b>包</b></span></label>
+              <label>單包進價<input required name="price" type="number" min="0" step="1" /></label>
+            </div>
+            <label>日期<input required name="date" type="date" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>進貨紀錄</h2><span id="purchaseCount" class="pill">0 筆</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>單號</th><th>日期</th><th>工廠單位</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>缸號</th><th>進貨包數</th><th>單包進價</th><th>金額</th><th></th></tr></thead>
+                <tbody id="purchaseRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="sales">
+        <div class="workspace">
+          <form class="editor" id="saleForm">
+            <h2>銷貨單</h2>
+            <label>國內合作商<select required name="partnerId" id="salePartner"></select></label>
+            <label>銷售產品<select required name="productId" id="saleProduct"></select></label>
+            <label>缸號<select name="vat" id="saleVat"></select></label>
+            <div class="product-summary" id="saleProductCard"></div>
+            <div class="two-col">
+              <label>銷貨包數<span class="unit-field"><input required name="qty" type="number" min="1" step="1" /><b>包</b></span></label>
+              <label>單包售價<input required name="price" type="number" min="0" step="1" /></label>
+            </div>
+            <label>日期<input required name="date" type="date" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>銷貨紀錄</h2><span id="saleCount" class="pill">0 筆</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>單號</th><th>日期</th><th>國內合作商</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>缸號</th><th>銷貨包數</th><th>單包售價</th><th>金額</th><th></th></tr></thead>
+                <tbody id="saleRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="inventory">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>庫存明細</h2>
+            <span class="pill" id="inventoryCount">0 品項</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>工廠生產重量</th><th>產品包數</th><th>現有庫存</th><th>安全量</th><th>庫存成本</th><th>狀態</th></tr></thead>
+              <tbody id="inventoryRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="tracking">
+        <div class="workspace">
+          <form class="editor" id="trackingForm">
+            <h2>貨品追蹤</h2>
+            <label>追蹤編號<input required name="code" placeholder="QSX-001" /></label>
+            <label>紗號<input required name="yarnNo" placeholder="YJ-26S" /></label>
+            <label>支數<input name="count" placeholder="2/26NM" /></label>
+            <label>成分<input name="composition" placeholder="100% 羊絨" /></label>
+            <label>品名<input required name="name" placeholder="雲錦羊絨" /></label>
+            <label>色號<input name="color" placeholder="米杏 103" /></label>
+            <label>缸號<input name="vat" placeholder="A260501" /></label>
+            <div class="two-col">
+              <label>數量<input required name="qty" type="number" min="0" step="0.1" /></label>
+              <label>單位<select name="unit"><option>KG</option><option>LBS</option></select></label>
+            </div>
+            <label>進度<select name="status"><option>胚紗生產中</option><option>染色中</option><option>打包中</option><option>已完成</option></select></label>
+            <label>預計完成日<input name="dueDate" type="date" /></label>
+            <label>備註<input name="note" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>貨品批次</h2><span id="trackingCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>追蹤編號</th><th>品名</th><th>紗號</th><th>色號</th><th>缸號</th><th>數量</th><th>進度</th><th>預計完成</th><th></th></tr></thead><tbody id="trackingRows"></tbody></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="production">
+        <section class="panel">
+          <div class="panel-head"><h2>生產流程看板</h2><span id="productionCount" class="pill">0 批次</span></div>
+          <div class="table-wrap"><table><thead><tr><th>追蹤編號</th><th>品名</th><th>目前進度</th><th>胚紗</th><th>染色</th><th>打包</th><th>完成</th><th>預計完成</th><th>剩餘天數</th><th>風險</th></tr></thead><tbody id="productionRows"></tbody></table></div>
+        </section>
+      </section>
+
+      <section class="view" id="live">
+        <div class="workspace">
+          <form class="editor" id="liveForm">
+            <h2>直播對應</h2>
+            <label>場次編號<input required name="code" placeholder="LIVE-001" /></label>
+            <label>直播日期<input required name="date" type="date" /></label>
+            <label>時段<input name="time" placeholder="20:00-22:00" /></label>
+            <label>主播<input name="host" placeholder="周逸秋" /></label>
+            <label>主推品名<input required name="productName" /></label>
+            <label>紗號<input name="yarnNo" /></label>
+            <label>色號<input name="color" /></label>
+            <label>批次/缸號<input name="batch" /></label>
+            <label>目標GMV<input name="targetGmv" type="number" min="0" step="1" /></label>
+            <label>狀態<select name="status"><option>未開始</option><option>準備中</option><option>已完成</option><option>取消</option></select></label>
+            <label>復盤備註<input name="note" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>直播排程</h2><span id="liveCount" class="pill">0 場</span></div>
+            <div class="table-wrap"><table><thead><tr><th>場次</th><th>日期</th><th>時段</th><th>主播</th><th>主推品</th><th>目標GMV</th><th>狀態</th><th></th></tr></thead><tbody id="liveRows"></tbody></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="shipping">
+        <div class="workspace">
+          <form class="editor" id="shipmentForm">
+            <h2>出貨單</h2>
+            <label>出貨單號<input required name="no" placeholder="QSX-SHIP-001" /></label>
+            <label>國內合作商<select required name="partnerId" id="shipmentPartner"></select></label>
+            <label>聯絡電話<input name="phone" /></label>
+            <label>出貨日期<input required name="date" type="date" /></label>
+            <label>收貨地址<input name="address" /></label>
+            <label>銷售產品<select required name="productId" id="shipmentProduct"></select></label>
+            <label>缸號<select name="vat" id="shipmentVat"></select></label>
+            <div class="product-summary" id="shipmentProductCard"></div>
+            <div class="two-col">
+              <label>出貨包數<span class="unit-field"><input required name="qty" type="number" min="1" step="1" /><b>包</b></span></label>
+              <label>單包價格<input name="price" type="number" min="0" step="1" /></label>
+            </div>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>出貨紀錄</h2><span id="shipmentCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>單號</th><th>日期</th><th>國內合作商</th><th>產品編號</th><th>銷售產品</th><th>缸號</th><th>出貨包數</th><th>單包價格</th><th>小計</th><th>狀態</th><th></th></tr></thead><tbody id="shipmentRows"></tbody></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="liveSales">
+        <div class="workspace">
+          <form class="editor" id="liveSaleForm">
+            <h2>直播間銷售</h2>
+            <label>直播場次<select name="liveId" id="liveSaleShow"></select></label>
+            <label>直播日期<input required name="date" type="date" /></label>
+            <label>直播間<select name="room"><option>抖音</option><option>小紅書</option><option>視頻號</option><option>淘寶直播</option><option>快手</option><option>拚多多</option></select></label>
+            <label>主播<input name="host" placeholder="周逸秋" /></label>
+            <label>銷售產品<select required name="productId" id="liveSaleProduct"></select></label>
+            <label>缸號<select name="vat" id="liveSaleVat"></select></label>
+            <div class="product-summary" id="liveSaleProductCard"></div>
+            <div class="two-col">
+              <label>銷售包數<span class="unit-field"><input required name="qty" type="number" min="1" step="1" /><b>包</b></span></label>
+              <label>直播單包售價<input required name="price" type="number" min="0" step="1" /></label>
+            </div>
+            <label>備註<input name="note" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>直播間銷售紀錄</h2><span id="liveSaleCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>日期</th><th>直播間</th><th>主播</th><th>產品編號</th><th>銷售產品</th><th>缸號</th><th>包數</th><th>單包售價</th><th>銷售額</th><th></th></tr></thead><tbody id="liveSaleRows"></tbody></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="staff">
+        <div class="section-tabs" role="tablist" aria-label="人事資料分類">
+          <button class="section-tab active" data-staff-tab="regular" type="button">一般員工</button>
+          <button class="section-tab" data-staff-tab="core" type="button">核心員工</button>
+          <button class="section-tab" data-staff-tab="partner" type="button">合夥員工</button>
+        </div>
+        <div class="workspace">
+          <form class="editor" id="staffForm">
+            <h2>人事資料</h2>
+            <input type="hidden" name="id" />
+            <input type="hidden" name="employeeType" id="staffEmployeeType" value="regular" />
+            <label>員工編號<input required name="code" placeholder="P001" /></label>
+            <label>姓名<input required name="name" /></label>
+            <label>部門<select name="dept"><option>總經辦</option><option>直播營運部</option><option>執行部</option><option>品牌部</option></select></label>
+            <label>職位<select name="title" id="staffTitle"></select></label>
+            <label>角色<select name="role"><option>管理員</option><option>主管</option><option>員工</option><option>老闆</option></select></label>
+            <label>電話<input name="phone" /></label>
+            <label>入職日<input name="joinDate" type="date" /></label>
+            <label>狀態<select name="status"><option>在職</option><option>離職</option></select></label>
+            <div class="staff-extra active" data-staff-panel="regular">
+              <label>到職備註<input name="regularNote" placeholder="一般員工備註" /></label>
+            </div>
+            <div class="staff-extra" data-staff-panel="core">
+              <label>核心職責<input name="coreDuty" placeholder="例：直播營運、供應鏈管理" /></label>
+              <label>績效方案<input name="bonusPlan" placeholder="例：月度績效獎金" /></label>
+            </div>
+            <div class="staff-extra" data-staff-panel="partner">
+              <label>合夥級別<input name="partnerLevel" placeholder="例：城市合夥人" /></label>
+              <label>分潤比例<input name="profitShare" placeholder="例：10%" /></label>
+              <label>合夥責任<input name="partnerDuty" placeholder="例：渠道拓展與銷售目標" /></label>
+            </div>
+            <label>備註<input name="note" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>員工資料</h2><span id="staffCount" class="pill">0 人</span></div>
+            <div class="table-wrap"><table><thead><tr><th>類型</th><th>編號</th><th>姓名</th><th>部門</th><th>職位</th><th>角色</th><th>電話</th><th>狀態</th><th></th></tr></thead><tbody id="staffRows"></tbody></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="contracts">
+        <div class="workspace">
+          <form class="editor" id="contractForm">
+            <h2>合同產生器</h2>
+            <label>合同類型<select name="type" id="contractType">
+              <option value="adminEmployee">行政員工合同</option>
+              <option value="salesEmployee">銷售員工合同</option>
+              <option value="wholesalePartner">批發商合作合同</option>
+              <option value="dealerPartner">經銷商合作合同</option>
+              <option value="influencerPartner">達人合作合同</option>
+              <option value="factoryPartner">工廠合作合同</option>
+              <option value="knitterPartner">織女合作合同</option>
+              <option value="partnerEmployee">合夥人員工合同</option>
+            </select></label>
+            <label>甲方<input name="partyA" value="秦時線" /></label>
+            <label>乙方<input required name="partyB" placeholder="姓名 / 公司名稱" /></label>
+            <label>乙方證件/統編<input name="partyBId" placeholder="身份證號 / 統一社會信用代碼" /></label>
+            <label>職位/合作內容<input name="role" placeholder="例：銷售專員 / 經銷合作" /></label>
+            <div class="two-col">
+              <label>開始日期<input name="startDate" type="date" /></label>
+              <label>結束日期<input name="endDate" type="date" /></label>
+            </div>
+            <label>薪資/結算方式<input name="payment" placeholder="例：月薪人民幣____元 / 按月結算" /></label>
+            <label>工作/合作地點<input name="location" placeholder="中國境內或雙方約定地點" /></label>
+            <label>補充條款<input name="extra" placeholder="可填保密、競業、分潤、交付標準等" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="file-down"></i><span>生成 Word 檔</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head">
+              <h2>合同預覽</h2>
+              <div class="row-actions">
+                <button class="small-btn" id="copyContractBtn" type="button" aria-label="複製"><i data-lucide="copy"></i></button>
+                <button class="small-btn" id="downloadContractBtn" type="button" aria-label="下載 Word"><i data-lucide="file-down"></i></button>
+              </div>
+            </div>
+            <pre class="contract-preview" id="contractPreview">請先填寫基本資料並生成合同。</pre>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="leave">
+        <div class="workspace">
+          <form class="editor" id="leaveForm">
+            <h2>請假申請</h2>
+            <label>申請編號<input required name="code" placeholder="L001" /></label>
+            <label>姓名<input required name="name" /></label>
+            <label>類型<input name="type" placeholder="事假" /></label>
+            <div class="two-col">
+              <label>開始日期<input required name="startDate" type="date" /></label>
+              <label>結束日期<input required name="endDate" type="date" /></label>
+            </div>
+            <label>天數<input required name="days" type="number" min="0" step="0.5" /></label>
+            <label>原因<input name="reason" /></label>
+            <label>狀態<select name="status"><option>待審批</option><option>已通過</option><option>已駁回</option></select></label>
+            <label>審批人<input name="approver" /></label>
+            <label>審批意見<input name="comment" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>請假紀錄</h2><span id="leaveCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>編號</th><th>姓名</th><th>類型</th><th>日期</th><th>天數</th><th>狀態</th><th>審批人</th><th></th></tr></thead><tbody id="leaveRows"></tbody></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="settings">
+        <div class="section-tabs" role="tablist" aria-label="資料設定分類">
+          <button class="section-tab active" data-setting-tab="positions" type="button">職位設定</button>
+          <button class="section-tab" data-setting-tab="permissions" type="button">OA 權限設定</button>
+        </div>
+        <div class="workspace">
+          <form class="editor setting-editor active" id="positionForm" data-setting-panel="positions">
+            <h2>職位設定</h2>
+            <label>職位名稱<input required name="name" placeholder="例如：直播主管" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+          </form>
+          <section class="panel wide setting-panel active" data-setting-panel="positions">
+            <div class="panel-head"><h2>職位清單</h2><span id="positionCount" class="pill">0 筆</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>職位名稱</th><th></th></tr></thead>
+                <tbody id="positionRows"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="panel wide setting-panel" data-setting-panel="permissions">
+            <div class="panel-head"><h2>人員使用 OA 系統權限</h2><span id="permissionCount" class="pill">0 人</span></div>
+            <div class="permission-list" id="permissionRows"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast"></div>
+    <script src="app.js?v=20260502-11"></script>
+  </body>
+</html>
