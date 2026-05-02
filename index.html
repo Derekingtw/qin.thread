@@ -19,13 +19,13 @@
           <button class="section-tab" data-auth-tab="register" type="button">註冊</button>
         </div>
         <form class="auth-form active" id="loginForm" data-auth-panel="login">
-          <label>帳號<input required name="username" autocomplete="username" /></label>
+          <label>手機號<input required name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="請輸入手機號" /></label>
           <label>密碼<input required name="password" type="password" autocomplete="current-password" /></label>
           <button class="primary-btn" type="submit"><i data-lucide="log-in"></i><span>登入</span></button>
         </form>
         <form class="auth-form" id="registerForm" data-auth-panel="register">
           <label>姓名<input required name="name" /></label>
-          <label>帳號<input required name="username" autocomplete="username" /></label>
+          <label>手機號<input required name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="請輸入手機號" /></label>
           <label>密碼<input required name="password" type="password" autocomplete="new-password" /></label>
           <button class="primary-btn" type="submit"><i data-lucide="user-plus"></i><span>註冊</span></button>
         </form>
@@ -520,7 +520,7 @@
             <label>員工編號<input required name="code" placeholder="P001" /></label>
             <label>姓名<input required name="name" /></label>
             <label>性別<select name="gender"><option>女</option><option>男</option><option>其他</option></select></label>
-            <label>部門<select name="dept"><option>總經辦</option><option>直播營運部</option><option>執行部</option><option>品牌部</option></select></label>
+            <label>部門<select name="dept"><option>待補資料</option><option>總經辦</option><option>直播營運部</option><option>執行部</option><option>品牌部</option></select></label>
             <label>職位<select name="title" id="staffTitle"></select></label>
             <label>角色<select name="role"><option>管理員</option><option>主管</option><option>員工</option><option>老闆</option></select></label>
             <label>電話<input name="phone" /></label>

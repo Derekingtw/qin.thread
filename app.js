@@ -10,6 +10,8 @@ const uid = (prefix) => `${prefix}-${Date.now().toString(36)}-${Math.random().to
 const money = (value) => Number(value || 0).toLocaleString("zh-TW", { style: "currency", currency: "TWD", maximumFractionDigits: 0 });
 const number = (value) => Number(value || 0).toLocaleString("zh-TW");
 const ceilNumber = (value) => Math.ceil(Number(value || 0));
+const normalizePhone = (value) => String(value || "").replace(/[^\d+]/g, "").trim();
+const phoneDigits = (value) => normalizePhone(value).replace(/\D/g, "");
 const zhMap = {
   "時": "时", "線": "线", "進": "进", "銷": "销", "總": "总", "覽": "览", "庫": "库", "存": "存", "貨": "货",
   "單": "单", "號": "号", "國": "国", "內": "内", "類": "类", "別": "别", "廠": "厂", "團": "团", "數": "数",
@@ -115,8 +117,12 @@ function normalizeState(saved) {
   next.meta = {
     updatedAt: Number(saved?.meta?.updatedAt || 0),
   };
-  next.settings.users = next.settings.users || [];
-  next.settings.positions = [...new Set([...(next.settings.positions || []), ...((next.staff || []).map((item) => item.title).filter(Boolean))])];
+  next.settings.users = (next.settings.users || []).map((user) => ({
+    ...user,
+    phone: normalizePhone(user.phone || user.username || ""),
+    username: normalizePhone(user.phone || user.username || ""),
+  }));
+  next.settings.positions = [...new Set(["待補資料", ...(next.settings.positions || []), ...((next.staff || []).map((item) => item.title).filter(Boolean))])];
   next.products = (next.products || []).map((product) => ({
     ...product,
     type: product.type || "office",
@@ -194,6 +200,45 @@ function findProductIn(saved, id) {
   return (saved?.products || []).find((item) => item.id === id);
 }
 
+function generateStaffCode() {
+  const maxSeq = (state.staff || [])
+    .map((item) => Number(String(item.code || "").replace(/\D/g, "")))
+    .filter(Number.isFinite)
+    .reduce((max, seq) => Math.max(max, seq), 0);
+  return `P${String(maxSeq + 1).padStart(3, "0")}`;
+}
+
+function ensureStaffForUser(user) {
+  const phone = normalizePhone(user.phone || user.username);
+  const name = String(user.name || "").trim();
+  let staff = (state.staff || []).find((item) => normalizePhone(item.phone) === phone && phone);
+  if (!staff && name) {
+    staff = (state.staff || []).find((item) => item.name === name && !normalizePhone(item.phone));
+  }
+  if (staff) {
+    staff.name = staff.name || name;
+    staff.phone = staff.phone || phone;
+    return staff.id;
+  }
+  const nextStaff = {
+    id: uid("stf"),
+    code: generateStaffCode(),
+    name,
+    gender: "",
+    dept: "待補資料",
+    title: "待補資料",
+    role: user.role === "admin" ? "管理者" : "員工",
+    phone,
+    joinDate: today(),
+    status: "在職",
+    employeeType: "regular",
+    regularNote: "註冊自動建立，待人工補齊資料",
+    note: "",
+  };
+  state.staff = [...(state.staff || []), nextStaff];
+  return nextStaff.id;
+}
+
 function saveState() {
   state.meta = { ...(state.meta || {}), updatedAt: Date.now() };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -205,12 +250,16 @@ function saveState() {
 }
 
 function loadSession() {
-  const username = localStorage.getItem(SESSION_KEY);
-  currentUser = state.settings.users.find((user) => user.username === username) || null;
+  const sessionPhone = normalizePhone(localStorage.getItem(SESSION_KEY));
+  if (!sessionPhone) {
+    currentUser = null;
+    return;
+  }
+  currentUser = state.settings.users.find((user) => normalizePhone(user.phone || user.username) === sessionPhone) || null;
 }
 
-function saveSession(username) {
-  localStorage.setItem(SESSION_KEY, username);
+function saveSession(phone) {
+  localStorage.setItem(SESSION_KEY, normalizePhone(phone));
   loadSession();
 }
 
@@ -236,20 +285,26 @@ function applyPermissions() {
 
 function registerUser(form) {
   const data = Object.fromEntries(new FormData(form));
-  const username = data.username.trim();
-  if (state.settings.users.some((user) => user.username === username)) return toast("帳號已存在");
+  const phone = normalizePhone(data.phone || data.username);
+  const name = String(data.name || "").trim();
+  if (!phone) return toast("請輸入手機號");
+  if (phoneDigits(phone).length < 8) return toast("手機號格式不正確");
+  if (!name) return toast("請輸入姓名");
+  if (state.settings.users.some((user) => normalizePhone(user.phone || user.username) === phone)) return toast("手機號已存在");
   const isFirst = state.settings.users.length === 0;
   const user = {
     id: uid("usr"),
-    name: data.name.trim(),
-    username,
+    name,
+    username: phone,
+    phone,
     password: data.password,
     role: isFirst ? "admin" : "user",
     permissions: isFirst ? [...ALL_VIEWS] : ["dashboard"],
   };
+  user.staffId = ensureStaffForUser(user);
   state.settings.users.push(user);
   saveState();
-  saveSession(username);
+  saveSession(phone);
   form.reset();
   toast(isFirst ? "已註冊管理者帳號" : "註冊完成，請由管理者設定權限");
   renderAll();
@@ -258,9 +313,15 @@ function registerUser(form) {
 
 function loginUser(form) {
   const data = Object.fromEntries(new FormData(form));
-  const user = state.settings.users.find((item) => item.username === data.username.trim() && item.password === data.password);
-  if (!user) return toast("帳號或密碼錯誤");
-  saveSession(user.username);
+  const phone = normalizePhone(data.phone || data.username);
+  if (!phone) return toast("請輸入手機號");
+  const user = state.settings.users.find((item) => normalizePhone(item.phone || item.username) === phone && item.password === data.password);
+  if (!user) return toast("手機號或密碼錯誤");
+  user.phone = normalizePhone(user.phone || user.username);
+  user.username = user.phone;
+  user.staffId = user.staffId || ensureStaffForUser(user);
+  saveState();
+  saveSession(user.phone);
   form.reset();
   toast("登入成功");
   renderAll();
@@ -863,7 +924,7 @@ function renderSettings() {
   $("#permissionCount").textContent = `${users.length} 人`;
   $("#permissionRows").innerHTML = users.map((user) => `
     <article class="permission-card">
-      <div><strong>${user.name}</strong><span>${user.username} · ${user.role === "admin" ? "管理者" : "一般帳號"}</span></div>
+      <div><strong>${user.name}</strong><span>${user.phone || user.username} · ${user.role === "admin" ? "管理者" : "一般帳號"}</span></div>
       <div class="permission-grid">
         ${ALL_VIEWS.map((view) => `<label><input type="checkbox" data-permission-user="${user.id}" value="${view}" ${user.role === "admin" || (user.permissions || []).includes(view) ? "checked" : ""} ${user.role === "admin" ? "disabled" : ""}>${viewLabel(view)}</label>`).join("")}
       </div>
