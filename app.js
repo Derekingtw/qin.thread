@@ -239,6 +239,20 @@ function ensureStaffForUser(user) {
   return nextStaff.id;
 }
 
+function syncUserAccountFromStaff(staff, previousPhone = "") {
+  const phone = normalizePhone(staff.phone);
+  if (!phone) return;
+  const oldPhone = normalizePhone(previousPhone);
+  state.settings.users = (state.settings.users || []).map((user) => {
+    const linked = user.staffId === staff.id || (oldPhone && normalizePhone(user.phone || user.username) === oldPhone);
+    if (!linked) return user;
+    return { ...user, name: staff.name || user.name, phone, username: phone };
+  });
+  if (currentUser?.staffId === staff.id || (oldPhone && normalizePhone(currentUser?.phone || currentUser?.username) === oldPhone)) {
+    saveSession(phone);
+  }
+}
+
 function saveState() {
   state.meta = { ...(state.meta || {}), updatedAt: Date.now() };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -947,7 +961,7 @@ function renderStaff() {
     <td>${item.dept}</td>
     <td>${item.title || "-"}</td>
     <td>${tag(item.role, "blue")}</td>
-    <td>${item.phone || "-"}</td>
+    <td><span class="account-cell">${item.phone || "-"}</span></td>
     <td>${tag(item.status || "在職", item.status === "離職" ? "out" : "ok")}</td>
     <td>${rowActions("staff", item.id, true)}</td>
   </tr>`).join("") || emptyRow(10);
@@ -1318,6 +1332,7 @@ function upsertPartner(form) {
 
 function upsertStaff(form) {
   const data = Object.fromEntries(new FormData(form));
+  const existing = data.id ? state.staff.find((item) => item.id === data.id) : null;
   const payload = {
     id: data.id || uid("stf"),
     code: data.code.trim(),
@@ -1326,7 +1341,7 @@ function upsertStaff(form) {
     dept: data.dept,
     title: data.title,
     role: data.role,
-    phone: data.phone.trim(),
+    phone: normalizePhone(data.phone),
     joinDate: data.joinDate,
     status: data.status,
     employeeType: data.employeeType || staffTab,
@@ -1337,9 +1352,10 @@ function upsertStaff(form) {
     profitShare: data.profitShare?.trim() || "",
     partnerDuty: data.partnerDuty?.trim() || "",
     note: data.note.trim(),
-    createdAt: data.id ? (state.staff.find((item) => item.id === data.id)?.createdAt || Date.now()) : Date.now(),
+    createdAt: data.id ? (existing?.createdAt || Date.now()) : Date.now(),
   };
   state.staff = data.id ? state.staff.map((item) => item.id === data.id ? payload : item) : [...state.staff, payload];
+  syncUserAccountFromStaff(payload, existing?.phone);
   saveState();
   resetForm(form);
   toast(data.id ? "員工資料已修改" : "員工資料已新增");
@@ -1787,7 +1803,7 @@ function reportContent(view) {
       ...(state.samples || []).map((p) => ["樣衣&配件", p.receivedDate, knitterName(p.knitterId), p.style, p.status, money(p.price)]),
     ]),
     shipping: () => reportTable(["單號", "日期", "國內合作商", "產品編號", "銷售產品", "缸號", "出貨包數", "單包價格", "小計", "狀態"], (state.shipments || []).map((p) => { const product = findProduct(p.productId); const partner = findPartner(p.partnerId); return [p.no, p.date, partner?.customerName || partner?.name || p.customer, product?.sku, product?.name || p.productName, p.vat, `${number(p.qty)} 包`, money(p.price), money(Number(p.qty) * Number(p.price)), p.status]; })),
-    staff: () => reportTable(["編號", "姓名", "部門", "職位", "角色", "電話", "狀態"], (state.staff || []).map((p) => [p.code, p.name, p.dept, p.title, p.role, p.phone, p.status])),
+    staff: () => reportTable(["編號", "姓名", "部門", "職位", "角色", "帳號／手機號", "狀態"], (state.staff || []).map((p) => [p.code, p.name, p.dept, p.title, p.role, p.phone, p.status])),
     leave: () => reportTable(["編號", "姓名", "類型", "開始日期", "結束日期", "天數", "狀態", "審批人"], (state.leaveRequests || []).map((p) => [p.code, staffName(p.staffId, p.name || "-"), p.type, p.startDate, p.endDate, p.days, p.status, staffName(p.approverId, p.approver || "-")])),
     approvals: () => reportTable(["類型", "編號", "申請人", "主旨", "日期", "金額/天數", "主管機關", "狀態"], approvalRows().map((p) => [p.typeName, p.code, staffName(p.staffId), p.title, p.date, p.amount, staffName(p.approverId), p.status])),
     payroll: () => reportTable(["類型", "姓名", "性別", "底薪/淨利", "比率", "實領"], [

@@ -715,6 +715,18 @@ td {
 }
 tr:last-child td { border-bottom: 0; }
 .num { text-align: right; }
+.account-cell {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 1px solid rgba(18, 214, 196, 0.32);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(18, 214, 196, 0.14), rgba(166, 38, 30, 0.08));
+  color: #5f1714;
+  font-weight: 900;
+  letter-spacing: 0;
+}
 .tag {
   display: inline-flex;
   align-items: center;
