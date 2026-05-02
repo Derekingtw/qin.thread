@@ -77,9 +77,9 @@ body.locked .app { filter: blur(5px); pointer-events: none; }
 .sidebar {
   min-height: 100vh;
   background:
-    linear-gradient(160deg, rgba(32,220,224,.18), transparent 34%),
-    radial-gradient(circle at 65% 0%, rgba(159, 47, 36, .22), transparent 30%),
-    linear-gradient(180deg, #2a1512, #0f1717 62%, #0b0f0f);
+    linear-gradient(160deg, rgba(32,220,224,.14), transparent 34%),
+    radial-gradient(circle at 65% 0%, rgba(159, 47, 36, .18), transparent 30%),
+    linear-gradient(180deg, #3a3a3a 0%, #242424 38%, #141515 100%);
   color: #fffaf1;
   padding: 24px 18px;
   display: flex;
@@ -592,6 +592,7 @@ input[type="file"] {
 .product-list,
 .setting-editor,
 .setting-panel,
+.knitter-panel,
 .staff-extra {
   display: none;
 }
@@ -602,8 +603,40 @@ input[type="file"] {
 }
 
 .product-list.active,
-.setting-panel.active {
+.setting-panel.active,
+.knitter-panel.active {
   display: block;
+}
+
+.knitter-panel.workspace.active {
+  display: grid;
+}
+
+.check-panel {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  margin: 0;
+  background: rgba(255,253,247,.62);
+}
+
+.check-panel legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.check-panel label {
+  grid-template-columns: auto auto minmax(90px, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.check-panel input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
 }
 
 .staff-extra.active {

@@ -1,6 +1,6 @@
 const STORAGE_KEY = "oa_inventory_state_v1";
 const SESSION_KEY = "oa_inventory_session_v1";
-const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "partners", "staff", "contracts", "leave", "tracking", "production", "settings"];
+const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "contracts", "leave", "tracking", "production", "settings"];
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -30,6 +30,8 @@ const defaultState = () => ({
   yarnTracks: [],
   liveShows: [],
   liveSales: [],
+  knitters: [],
+  samples: [],
   shipments: [],
   staff: [],
   leaveRequests: [],
@@ -46,6 +48,7 @@ let searchTerm = "";
 let productTab = "saleGoods";
 let currentLang = "zh-TW";
 let staffTab = "regular";
+let knitterTab = "profiles";
 let currentUser = null;
 
 function loadState() {
@@ -108,7 +111,23 @@ function normalizeState(saved) {
     productId: doc.productId || "",
     vat: doc.vat || "",
   }));
-  next.liveSales = next.liveSales || [];
+  next.liveSales = (next.liveSales || []).map((item) => ({
+    ...item,
+    revenue: Number(item.revenue ?? (Number(item.qty || 0) * Number(item.price || 0))),
+    refund: Number(item.refund || 0),
+    netRevenue: Number(item.netRevenue ?? (Number(item.revenue ?? (Number(item.qty || 0) * Number(item.price || 0))) - Number(item.refund || 0))),
+  }));
+  next.knitters = (next.knitters || []).map((item) => ({
+    ...item,
+    styles: Array.isArray(item.styles) ? item.styles : String(item.styles || "").split("、").filter(Boolean),
+    prices: item.prices || {},
+    leadTime: Number(item.leadTime || 0),
+  }));
+  next.samples = (next.samples || []).map((item) => ({
+    ...item,
+    price: Number(item.price || 0),
+    imageData: item.imageData || "",
+  }));
   return next;
 }
 
@@ -206,8 +225,7 @@ function productStock(productId) {
   const product = findProduct(productId);
   const inQty = state.purchases.filter((doc) => doc.productId === productId).reduce((sum, doc) => sum + Number(doc.qty), 0);
   const outQty = state.sales.filter((doc) => doc.productId === productId).reduce((sum, doc) => sum + Number(doc.qty), 0);
-  const liveOutQty = (state.liveSales || []).filter((doc) => doc.productId === productId).reduce((sum, doc) => sum + Number(doc.qty), 0);
-  return Number(product?.packageCount ?? product?.initialQty ?? 0) + inQty - outQty - liveOutQty;
+  return Number(product?.packageCount ?? product?.initialQty ?? 0) + inQty - outQty;
 }
 
 function generateSaleSku(existingId = "") {
@@ -253,6 +271,13 @@ function monthTotal(docs) {
   return docs
     .filter((doc) => doc.date?.startsWith(ym))
     .reduce((sum, doc) => sum + Number(doc.qty) * Number(doc.price), 0);
+}
+
+function liveSalesTotal() {
+  const ym = today().slice(0, 7);
+  return (state.liveSales || [])
+    .filter((doc) => doc.date?.startsWith(ym))
+    .reduce((sum, doc) => sum + liveNet(doc), 0);
 }
 
 function currentRows(rows) {
@@ -311,27 +336,44 @@ function productThumb(product, size = "table") {
     : `<span class="product-thumb empty-thumb ${size}">無圖</span>`;
 }
 
+function imageThumb(src, label = "圖片", size = "table") {
+  return src
+    ? `<img class="product-thumb ${size}" src="${src}" alt="${label}" loading="lazy" />`
+    : `<span class="product-thumb empty-thumb ${size}">無圖</span>`;
+}
+
+function liveNet(item) {
+  return Number(item.netRevenue ?? (Number(item.revenue || 0) - Number(item.refund || 0)));
+}
+
+function knitterName(id) {
+  return (state.knitters || []).find((item) => item.id === id)?.name || "-";
+}
+
+function knitterOptions(select) {
+  if (!select) return;
+  const rows = state.knitters || [];
+  select.innerHTML = rows.map((item) => `<option value="${item.id}">${item.name}</option>`).join("") || `<option value="">請先建立織女資料</option>`;
+}
+
 function syncSelects() {
   productOptions($("#purchaseProduct"), "purchase");
   productOptions($("#saleProduct"), "sale");
   productOptions($("#shipmentProduct"), "shipment");
-  productOptions($("#liveSaleProduct"), "liveSale");
   partnerOptions($("#purchasePartner"), "factory");
   partnerOptions($("#salePartner"), "customer");
   partnerOptions($("#shipmentPartner"), "customer");
   liveShowOptions($("#liveSaleShow"));
   positionOptions($("#staffTitle"));
+  knitterOptions($("#sampleKnitter"));
   renderProductCard($("#purchaseProduct")?.value, "purchaseProductCard");
   renderProductCard($("#saleProduct")?.value, "saleProductCard");
   renderProductCard($("#shipmentProduct")?.value, "shipmentProductCard");
-  renderProductCard($("#liveSaleProduct")?.value, "liveSaleProductCard");
   vatOptions($("#saleVat"), $("#saleProduct")?.value);
   vatOptions($("#shipmentVat"), $("#shipmentProduct")?.value);
-  vatOptions($("#liveSaleVat"), $("#liveSaleProduct")?.value);
   updateDocProduct("purchaseForm", "purchaseProductCard", "cost");
   updateDocProduct("saleForm", "saleProductCard", "price");
   updateDocProduct("shipmentForm", "shipmentProductCard", "price");
-  updateDocProduct("liveSaleForm", "liveSaleProductCard", "price");
 }
 
 function renderProductCard(productId, targetId) {
@@ -363,7 +405,7 @@ function renderDashboard() {
   const liveRows = state.liveShows || [];
   $("#stockValue").textContent = money(stockValue);
   $("#monthPurchase").textContent = money(monthTotal(state.purchases));
-  $("#monthSale").textContent = money(monthTotal(state.sales) + monthTotal(state.liveSales || []));
+  $("#monthSale").textContent = money(monthTotal(state.sales) + liveSalesTotal());
   $("#lowStockCount").textContent = lowStocks.length + trackingRows.filter((item) => item.status !== "已完成").length;
 
   $("#lowStockRows").innerHTML = lowStocks.map((product) => {
@@ -379,7 +421,7 @@ function renderDashboard() {
   const docs = [
     ...state.purchases.map((doc) => ({ ...doc, kind: "進貨", icon: "truck" })),
     ...state.sales.map((doc) => ({ ...doc, kind: "銷貨", icon: "shopping-cart" })),
-    ...(state.liveSales || []).map((doc) => ({ ...doc, no: "LIVE-SALE", kind: "直播間銷售", icon: "badge-dollar-sign", partnerId: "", price: doc.price, qty: doc.qty })),
+    ...(state.liveSales || []).map((doc) => ({ ...doc, no: "LIVE-SALE", kind: "直播間銷售", icon: "badge-dollar-sign", partnerId: "", price: liveNet(doc), qty: 1 })),
     ...liveRows.map((doc) => ({ ...doc, no: doc.code, kind: "直播", icon: "radio", partnerId: "", productId: "", price: doc.targetGmv, qty: 1 })),
     ...trackingRows.map((doc) => ({ ...doc, no: doc.code, kind: "貨品", icon: "route", partnerId: "", productId: "", price: 0, qty: 0 })),
   ].sort((a, b) => b.createdAt - a.createdAt).slice(0, 6);
@@ -407,21 +449,27 @@ function renderDashboardExtras() {
     </article>
   `).join("") || `<p class="empty">尚無公告</p>`;
 
-  const partnerStaff = (state.staff || []).filter((item) => item.employeeType === "partner");
-  $("#partnerStaffCount").textContent = `${partnerStaff.length} 人`;
-  $("#partnerStaffRows").innerHTML = partnerStaff.map((item) => `
-    <div class="activity-item">
-      <span class="activity-icon"><i data-lucide="handshake"></i></span>
-      <div><strong>${item.name}</strong><span>${item.partnerLevel || item.title || "-"} · ${item.profitShare || "未設定分潤"}</span></div>
-      <strong>${item.status || "在職"}</strong>
-    </div>
-  `).join("") || `<p class="empty">尚無合夥員工</p>`;
+  const dashboardLiveSales = (state.liveSales || []).slice().sort((a, b) => `${b.date}${b.createdAt}`.localeCompare(`${a.date}${a.createdAt}`)).slice(0, 6);
+  $("#dashboardLiveSaleCount").textContent = `${dashboardLiveSales.length} 筆`;
+  $("#dashboardLiveSaleRows").innerHTML = dashboardLiveSales.map((item) => `
+    <tr><td>${item.date || "-"}</td><td>${item.room || "-"}</td><td>${item.host || "-"}</td><td class="num">${money(item.revenue)}</td><td class="num">${money(item.refund)}</td><td class="num">${money(liveNet(item))}</td></tr>
+  `).join("") || emptyRow(6);
 
   const liveSimple = (state.liveShows || []).slice().sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
   $("#simpleLiveCount").textContent = `${liveSimple.length} 場`;
   $("#simpleLiveRows").innerHTML = liveSimple.map((item) => `
     <tr><td>${item.date || "-"} ${item.time || ""}</td><td>${item.host || "-"}</td><td>${tag(item.status || "未開始", item.status === "已完成" ? "ok" : "blue")}</td></tr>
   `).join("") || emptyRow(3);
+
+  const sampleRows = (state.samples || []).slice().sort((a, b) => `${b.receivedDate}${b.createdAt}`.localeCompare(`${a.receivedDate}${a.createdAt}`)).slice(0, 6);
+  $("#dashboardSampleCount").textContent = `${sampleRows.length} 件`;
+  $("#dashboardSampleRows").innerHTML = sampleRows.map((item) => `
+    <tr><td>${item.receivedDate || "-"}</td><td>${knitterName(item.knitterId)}</td><td>${item.style || "-"}</td><td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td><td>${item.hasTutorial || "-"}</td><td class="num">${money(item.price)}</td></tr>
+  `).join("") || emptyRow(6);
+  $("#dashboardSampleInventoryCount").textContent = `${sampleRows.length} 件`;
+  $("#dashboardSampleInventoryRows").innerHTML = sampleRows.map((item) => `
+    <tr><td>${item.style || "-"}</td><td>${knitterName(item.knitterId)}</td><td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td><td>${tag(item.settled || "未支付", item.settled === "已結清" ? "ok" : "warn")}</td><td>${item.receivedDate || "-"}</td></tr>
+  `).join("") || emptyRow(5);
 }
 
 function tag(text, type = "") {
@@ -442,7 +490,7 @@ function rowActions(type, id, editable = false) {
 function renderProducts() {
   const saleRows = currentRows(state.products.filter((product) => product.type === "sale"));
   const officeRows = currentRows(state.products.filter((product) => product.type !== "sale"));
-  $("#productListTitle").textContent = productTab === "saleGoods" ? "銷售產品清單" : "一般用品清單";
+  $("#productListTitle").textContent = productTab === "saleGoods" ? "銷售產品清單" : "一般產品清單";
   $("#productCount").textContent = `${productTab === "saleGoods" ? saleRows.length : officeRows.length} 筆`;
   $("#sellProductRows").innerHTML = saleRows.map((product) => `<tr>
     <td>${productThumb(product)}</td>
@@ -639,22 +687,61 @@ function renderShipments() {
 function renderLiveSales() {
   const rows = currentRows(state.liveSales || []).sort((a, b) => `${b.date}${b.createdAt}`.localeCompare(`${a.date}${a.createdAt}`));
   $("#liveSaleCount").textContent = `${rows.length} 筆`;
-  $("#liveSaleRows").innerHTML = rows.map((item) => {
-    const product = findProduct(item.productId);
-    return `<tr>
-      <td>${productThumb(product)}</td>
+  $("#liveSaleRows").innerHTML = rows.map((item) => `<tr>
       <td>${item.date}</td>
       <td>${item.room || "-"}</td>
       <td>${item.host || "-"}</td>
-      <td>${product?.sku || "-"}</td>
-      <td>${product?.name || "-"}</td>
-      <td>${item.vat || "-"}</td>
-      <td>${number(item.qty)} 包</td>
-      <td class="num">${money(item.price)}</td>
-      <td class="num">${money(Number(item.qty) * Number(item.price))}</td>
+      <td class="num">${money(item.revenue)}</td>
+      <td class="num">${money(item.refund)}</td>
+      <td class="num">${money(liveNet(item))}</td>
+      <td>${item.note || "-"}</td>
       <td>${rowActions("liveSale", item.id)}</td>
+    </tr>`).join("") || emptyRow(8);
+}
+
+function renderKnitters() {
+  const knitters = currentRows(state.knitters || []);
+  $("#knitterCount").textContent = `${knitters.length} 筆`;
+  $("#knitterRows").innerHTML = knitters.map((item) => {
+    const styles = item.styles || [];
+    const priceText = styles.map((style) => `${style} ${money(item.prices?.[style] || 0)}`).join("、") || "-";
+    return `<tr>
+      <td>${item.contractDate || "-"}</td>
+      <td>${item.name || "-"}</td>
+      <td>${styles.join("、") || "-"}</td>
+      <td>${priceText}</td>
+      <td>${number(item.leadTime)} 天</td>
+      <td>${item.tutorialAvailable || "-"}</td>
+      <td>${item.settlementDate || "-"}</td>
+      <td>${rowActions("knitter", item.id)}</td>
     </tr>`;
-  }).join("") || emptyRow(11);
+  }).join("") || emptyRow(8);
+
+  const samples = currentRows(state.samples || []).sort((a, b) => `${b.receivedDate}${b.createdAt}`.localeCompare(`${a.receivedDate}${a.createdAt}`));
+  $("#sampleCount").textContent = `${samples.length} 筆`;
+  $("#sampleRows").innerHTML = samples.map((item) => `<tr>
+    <td>${imageThumb(item.imageData, item.style)}</td>
+    <td>${knitterName(item.knitterId)}</td>
+    <td>${item.receivedDate || "-"}</td>
+    <td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td>
+    <td>${item.style || "-"}</td>
+    <td>${item.hasTutorial || "-"}</td>
+    <td class="num">${money(item.price)}</td>
+    <td>${tag(item.settled || "未支付", item.settled === "已結清" ? "ok" : "warn")}</td>
+    <td>${rowActions("sample", item.id)}</td>
+  </tr>`).join("") || emptyRow(9);
+
+  $("#sampleInventoryCount").textContent = `${samples.length} 件`;
+  $("#sampleInventoryRows").innerHTML = samples.map((item) => `<tr>
+    <td>${imageThumb(item.imageData, item.style)}</td>
+    <td>${item.style || "-"}</td>
+    <td>${knitterName(item.knitterId)}</td>
+    <td>${item.receivedDate || "-"}</td>
+    <td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td>
+    <td>${item.hasTutorial || "-"}</td>
+    <td class="num">${money(item.price)}</td>
+    <td>${tag(item.settled || "未支付", item.settled === "已結清" ? "ok" : "warn")}</td>
+  </tr>`).join("") || emptyRow(8);
 }
 
 function renderSettings() {
@@ -728,6 +815,7 @@ function renderAll() {
   renderLive();
   renderShipments();
   renderLiveSales();
+  renderKnitters();
   renderStaff();
   renderLeave();
   renderSettings();
@@ -756,6 +844,13 @@ function setSettingTab(tab) {
   $$("[data-setting-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.settingPanel === tab));
 }
 
+function setKnitterTab(tab) {
+  knitterTab = tab;
+  $$("[data-knitter-tab]").forEach((button) => button.classList.toggle("active", button.dataset.knitterTab === tab));
+  $$("[data-knitter-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.knitterPanel === tab));
+  renderKnitters();
+}
+
 function setAuthTab(tab) {
   $$("[data-auth-tab]").forEach((button) => button.classList.toggle("active", button.dataset.authTab === tab));
   $$("[data-auth-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.authPanel === tab));
@@ -782,6 +877,8 @@ function resetForm(form) {
   form.reset();
   if (form.elements.id) form.elements.id.value = "";
   if (form.elements.date) form.elements.date.value = today();
+  if (form.elements.contractDate) form.elements.contractDate.value = today();
+  if (form.elements.receivedDate) form.elements.receivedDate.value = today();
   if (form.id === "sellProductForm") {
     form.elements.sku.value = generateSaleSku();
     form.elements.imageData.value = "";
@@ -793,6 +890,13 @@ function resetForm(form) {
   }
   if (form.id === "staffForm") {
     setStaffTab(staffTab);
+  }
+  if (form.id === "sampleForm") {
+    form.elements.imageData.value = "";
+    renderImagePreview("sampleImagePreview", "");
+  }
+  if (form.id === "liveSaleForm") {
+    updateLiveSaleNet();
   }
 }
 
@@ -812,6 +916,31 @@ function renderProductImagePreview(src) {
     : "尚未選擇圖片";
 }
 
+function renderImagePreview(targetId, src) {
+  const preview = $(`#${targetId}`);
+  if (!preview) return;
+  preview.innerHTML = src
+    ? `<img src="${src}" alt="圖片預覽" />`
+    : "尚未選擇圖片";
+}
+
+function handleImageUpload(event, formId, previewId) {
+  const file = event.target.files?.[0];
+  const form = $(`#${formId}`);
+  if (!file || !form) return;
+  if (!file.type.startsWith("image/")) {
+    toast("請選擇圖片檔");
+    event.target.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    form.elements.imageData.value = reader.result;
+    renderImagePreview(previewId, reader.result);
+  };
+  reader.readAsDataURL(file);
+}
+
 function handleProductImage(event) {
   const file = event.target.files?.[0];
   const form = $("#sellProductForm");
@@ -827,6 +956,14 @@ function handleProductImage(event) {
     renderProductImagePreview(reader.result);
   };
   reader.readAsDataURL(file);
+}
+
+function updateLiveSaleNet() {
+  const form = $("#liveSaleForm");
+  if (!form) return;
+  const revenue = Number(form.elements.revenue.value || 0);
+  const refund = Number(form.elements.refund.value || 0);
+  form.elements.netRevenue.value = Math.max(0, revenue - refund);
 }
 
 function updateDocProduct(formId, cardId, priceType) {
@@ -992,7 +1129,7 @@ function deleteItem(type, id) {
       ? state.purchases.some((doc) => doc.partnerId === id) || state.sales.some((doc) => doc.partnerId === id)
       : false;
   if (hasDoc) return toast("已有單據使用，請保留資料");
-  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements" };
+  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples" };
   state[map[type]] = state[map[type]].filter((item) => item.id !== id);
   saveState();
   toast("資料已刪除");
@@ -1009,22 +1146,63 @@ function addGeneric(form, key, prefix, transform = (data) => data) {
   renderAll();
 }
 
+function addKnitter(form) {
+  const data = Object.fromEntries(new FormData(form));
+  const styles = new FormData(form).getAll("styles");
+  if (!styles.length) return toast("請至少選擇一個樣衣款式");
+  const prices = Object.fromEntries(styles.map((style) => [style, Number(data[`price_${style}`] || 0)]));
+  state.knitters = [...(state.knitters || []), {
+    id: uid("knitter"),
+    contractDate: data.contractDate,
+    name: data.name.trim(),
+    styles,
+    prices,
+    leadTime: Number(data.leadTime || 0),
+    tutorialAvailable: data.tutorialAvailable,
+    settlementDate: data.settlementDate,
+    createdAt: Date.now(),
+  }];
+  saveState();
+  resetForm(form);
+  toast("織女資料已新增");
+  renderAll();
+}
+
+function addSample(form) {
+  const data = Object.fromEntries(new FormData(form));
+  if (!data.knitterId) return toast("請先建立織女資料");
+  state.samples = [...(state.samples || []), {
+    id: uid("sample"),
+    knitterId: data.knitterId,
+    receivedDate: data.receivedDate,
+    imageData: data.imageData || "",
+    status: data.status,
+    style: data.style,
+    hasTutorial: data.hasTutorial,
+    price: Number(data.price || 0),
+    settled: data.settled,
+    createdAt: Date.now(),
+  }];
+  saveState();
+  resetForm(form);
+  toast("樣衣&配件已新增");
+  renderAll();
+}
+
 function addLiveSale(form) {
   const data = Object.fromEntries(new FormData(form));
-  const product = findProduct(data.productId);
-  if (!product) return toast("請先建立銷售產品");
-  if (Number(data.qty) > productStock(data.productId)) return toast("庫存不足，無法新增直播間銷售");
   const show = (state.liveShows || []).find((item) => item.id === data.liveId);
+  const revenue = Number(data.revenue || 0);
+  const refund = Number(data.refund || 0);
   state.liveSales = [...(state.liveSales || []), {
     id: uid("live-sale"),
     liveId: data.liveId,
     date: data.date,
     room: data.room.trim(),
     host: data.host.trim() || show?.host || "",
-    productId: data.productId,
-    vat: data.vat || product.vat || "",
-    qty: Number(data.qty),
-    price: Number(data.price),
+    revenue,
+    refund,
+    netRevenue: Math.max(0, revenue - refund),
     note: data.note.trim(),
     createdAt: Date.now(),
   }];
@@ -1195,7 +1373,7 @@ function docRows(kind) {
 function reportContent(view) {
   const titles = {
     dashboard: "總覽報表",
-    products: productTab === "saleGoods" ? "銷售產品報表" : "一般用品報表",
+    products: productTab === "saleGoods" ? "銷售產品報表" : "一般產品報表",
     partners: "往來單位報表",
     purchases: "進貨報表",
     sales: "銷貨報表",
@@ -1204,6 +1382,7 @@ function reportContent(view) {
     production: "生產圖報表",
     live: "直播對應報表",
     liveSales: "直播間銷售報表",
+    knitters: "織女系統報表",
     shipping: "出貨單報表",
     staff: "人事資料報表",
     leave: "請假申請報表",
@@ -1247,7 +1426,11 @@ function reportContent(view) {
     tracking: () => reportTable(["追蹤編號", "品名", "紗號", "色號", "缸號", "數量", "進度", "預計完成", "備註"], (state.yarnTracks || []).map((p) => [p.code, p.name, p.yarnNo, p.color, p.vat, `${number(p.qty)} ${p.unit || ""}`, p.status, p.dueDate, p.note])),
     production: () => reportTable(["追蹤編號", "品名", "目前進度", "預計完成", "剩餘天數", "風險"], (state.yarnTracks || []).map((p) => [p.code, p.name, p.status, p.dueDate, daysLeft(p.dueDate) === "" ? "" : `${daysLeft(p.dueDate)} 天`, p.status === "已完成" ? "完成" : daysLeft(p.dueDate) < 0 ? "逾期" : "正常"])),
     live: () => reportTable(["場次", "日期", "時段", "主播", "主推品", "紗號", "目標GMV", "狀態"], (state.liveShows || []).map((p) => [p.code, p.date, p.time, p.host, p.productName, p.yarnNo, money(p.targetGmv), p.status])),
-    liveSales: () => reportTable(["日期", "直播間", "主播", "產品編號", "銷售產品", "缸號", "包數", "單包售價", "銷售額"], (state.liveSales || []).map((p) => { const product = findProduct(p.productId); return [p.date, p.room, p.host, product?.sku, product?.name, p.vat, `${number(p.qty)} 包`, money(p.price), money(Number(p.qty) * Number(p.price))]; })),
+    liveSales: () => reportTable(["日期", "直播間", "主播", "營收", "退款", "淨營收", "備註"], (state.liveSales || []).map((p) => [p.date, p.room, p.host, money(p.revenue), money(p.refund), money(liveNet(p)), p.note])),
+    knitters: () => reportTable(["類型", "日期", "姓名/織女", "款式", "狀態", "單價/金額"], [
+      ...(state.knitters || []).map((p) => ["織女資料", p.contractDate, p.name, (p.styles || []).join("、"), p.tutorialAvailable, (p.styles || []).map((style) => `${style} ${money(p.prices?.[style] || 0)}`).join("、")]),
+      ...(state.samples || []).map((p) => ["樣衣&配件", p.receivedDate, knitterName(p.knitterId), p.style, p.status, money(p.price)]),
+    ]),
     shipping: () => reportTable(["單號", "日期", "國內合作商", "產品編號", "銷售產品", "缸號", "出貨包數", "單包價格", "小計", "狀態"], (state.shipments || []).map((p) => { const product = findProduct(p.productId); const partner = findPartner(p.partnerId); return [p.no, p.date, partner?.customerName || partner?.name || p.customer, product?.sku, product?.name || p.productName, p.vat, `${number(p.qty)} 包`, money(p.price), money(Number(p.qty) * Number(p.price)), p.status]; })),
     staff: () => reportTable(["編號", "姓名", "部門", "職位", "角色", "電話", "狀態"], (state.staff || []).map((p) => [p.code, p.name, p.dept, p.title, p.role, p.phone, p.status])),
     leave: () => reportTable(["編號", "姓名", "類型", "開始日期", "結束日期", "天數", "狀態", "審批人"], (state.leaveRequests || []).map((p) => [p.code, p.name, p.type, p.startDate, p.endDate, p.days, p.status, p.approver])),
@@ -1374,7 +1557,13 @@ function seedData() {
       { id: "live-3", code: "LIVE-003", date: "2026-05-07", time: "20:30-22:30", host: "周逸秋", productName: "雲錦羊絨", yarnNo: "YJ-26S", color: "米杏 103", batch: "A260501", targetGmv: 45000, status: "未開始", note: "高客單專場", createdAt: Date.now() - 50000 },
     ],
     liveSales: [
-      { id: "livesale-1", liveId: "live-1", date: today(), room: "小紅書直播間", host: "周逸秋", productId: "prd-moxue", vat: "D260401", qty: 6, price: 1280, note: "主推色", createdAt: Date.now() - 48000 },
+      { id: "livesale-1", liveId: "live-1", date: today(), room: "小紅書", host: "周逸秋", revenue: 7680, refund: 860, netRevenue: 6820, note: "主推色直播", createdAt: Date.now() - 48000 },
+    ],
+    knitters: [
+      { id: "knitter-1", contractDate: "2026-05-02", name: "蘇雲娘", styles: ["無袖", "背心"], prices: { "無袖": 1200, "背心": 980 }, leadTime: 14, tutorialAvailable: "可", settlementDate: "2026-05-31", createdAt: Date.now() - 47000 },
+    ],
+    samples: [
+      { id: "sample-1", knitterId: "knitter-1", receivedDate: today(), imageData: "", status: "已到貨", style: "背心", hasTutorial: "是", price: 980, settled: "未支付", createdAt: Date.now() - 46000 },
     ],
     announcements: [
       { id: "ann-1", title: "秦時線 OA 上線", content: "請各部門每日更新進貨、銷貨、直播與出貨資料。", author: "管理者", createdAt: Date.now() - 60000 },
@@ -1405,6 +1594,7 @@ function bindEvents() {
   $$(".nav-item").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   $$("[data-action='goto']").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   $$("[data-product-tab]").forEach((button) => button.addEventListener("click", () => setProductTab(button.dataset.productTab)));
+  $$("[data-knitter-tab]").forEach((button) => button.addEventListener("click", () => setKnitterTab(button.dataset.knitterTab)));
   $$("[data-setting-tab]").forEach((button) => button.addEventListener("click", () => setSettingTab(button.dataset.settingTab)));
   $$("[data-staff-tab]").forEach((button) => button.addEventListener("click", () => setStaffTab(button.dataset.staffTab)));
   $$("[data-auth-tab]").forEach((button) => button.addEventListener("click", () => setAuthTab(button.dataset.authTab)));
@@ -1427,6 +1617,9 @@ function bindEvents() {
   $("#sellProductForm").elements.productQty.addEventListener("input", updatePackageCount);
   $("#sellProductForm").elements.packSize.addEventListener("input", updatePackageCount);
   $("#productImageInput").addEventListener("change", handleProductImage);
+  $("#sampleImageInput").addEventListener("change", (event) => handleImageUpload(event, "sampleForm", "sampleImagePreview"));
+  $("#liveSaleRevenue").addEventListener("input", updateLiveSaleNet);
+  $("#liveSaleRefund").addEventListener("input", updateLiveSaleNet);
   $("#globalSearch").addEventListener("input", (event) => {
     searchTerm = event.target.value.trim();
     renderAll();
@@ -1475,6 +1668,14 @@ function bindEvents() {
   $("#liveSaleForm").addEventListener("submit", (event) => {
     event.preventDefault();
     addLiveSale(event.currentTarget);
+  });
+  $("#knitterForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addKnitter(event.currentTarget);
+  });
+  $("#sampleForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addSample(event.currentTarget);
   });
   $("#staffForm").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -1541,10 +1742,6 @@ function bindEvents() {
     updateDocProduct("shipmentForm", "shipmentProductCard", "price");
     vatOptions($("#shipmentVat"), event.target.value);
   });
-  $("#liveSaleProduct").addEventListener("change", (event) => {
-    updateDocProduct("liveSaleForm", "liveSaleProductCard", "price");
-    vatOptions($("#liveSaleVat"), event.target.value);
-  });
   $("#liveSaleShow").addEventListener("change", (event) => {
     const show = (state.liveShows || []).find((item) => item.id === event.target.value);
     if (!show) return;
@@ -1566,6 +1763,8 @@ async function init() {
   resetForm($("#liveForm"));
   resetForm($("#shipmentForm"));
   resetForm($("#liveSaleForm"));
+  resetForm($("#knitterForm"));
+  resetForm($("#sampleForm"));
   resetForm($("#staffForm"));
   resetForm($("#leaveForm"));
   renderAll();

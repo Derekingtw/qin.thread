@@ -48,6 +48,7 @@
         <button class="nav-item" data-view="shipping"><i data-lucide="clipboard-list"></i><span>出貨單</span></button>
         <button class="nav-item" data-view="liveSales"><i data-lucide="badge-dollar-sign"></i><span>直播間銷售</span></button>
         <button class="nav-item" data-view="live"><i data-lucide="radio"></i><span>直播對應</span></button>
+        <button class="nav-item" data-view="knitters"><i data-lucide="shirt"></i><span>織女系統</span></button>
         <button class="nav-item" data-view="partners"><i data-lucide="users"></i><span>往來單位</span></button>
         <button class="nav-item" data-view="staff"><i data-lucide="id-card"></i><span>人事資料</span></button>
         <button class="nav-item" data-view="contracts"><i data-lucide="file-signature"></i><span>合同</span></button>
@@ -135,8 +136,13 @@
         </div>
         <div class="dashboard-grid dashboard-extra">
           <section class="panel">
-            <div class="panel-head"><h2>合夥員工名單</h2><span class="pill" id="partnerStaffCount">0 人</span></div>
-            <div class="activity" id="partnerStaffRows"></div>
+            <div class="panel-head"><h2>直播間銷售</h2><span class="pill" id="dashboardLiveSaleCount">0 筆</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>日期</th><th>直播間</th><th>主播</th><th>營收</th><th>退款</th><th>淨營收</th></tr></thead>
+                <tbody id="dashboardLiveSaleRows"></tbody>
+              </table>
+            </div>
           </section>
           <section class="panel">
             <div class="panel-head"><h2>直播間排程表</h2><span class="pill" id="simpleLiveCount">0 場</span></div>
@@ -148,12 +154,32 @@
             </div>
           </section>
         </div>
+        <div class="dashboard-grid dashboard-extra">
+          <section class="panel">
+            <div class="panel-head"><h2>樣衣&配件</h2><span class="pill" id="dashboardSampleCount">0 件</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>收到日期</th><th>織女</th><th>款式</th><th>狀態</th><th>教程</th><th>單價</th></tr></thead>
+                <tbody id="dashboardSampleRows"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2>樣衣&配件庫存</h2><span class="pill" id="dashboardSampleInventoryCount">0 件</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>款式</th><th>織女</th><th>狀態</th><th>結清</th><th>收到日期</th></tr></thead>
+                <tbody id="dashboardSampleInventoryRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
       </section>
 
       <section class="view" id="products">
         <div class="section-tabs" role="tablist" aria-label="商品分類">
           <button class="section-tab active" data-product-tab="saleGoods" type="button">銷售產品</button>
-          <button class="section-tab" data-product-tab="officeGoods" type="button">一般用品</button>
+          <button class="section-tab" data-product-tab="officeGoods" type="button">一般產品</button>
         </div>
         <div class="workspace">
           <form class="editor product-editor active" id="sellProductForm" data-product-panel="saleGoods">
@@ -186,7 +212,7 @@
             <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
           </form>
           <form class="editor product-editor" id="productForm" data-product-panel="officeGoods">
-            <h2>一般用品</h2>
+            <h2>一般產品</h2>
             <input type="hidden" name="id" />
             <label>品號<input required name="sku" placeholder="PRD-001" /></label>
             <label>品名<input required name="name" placeholder="A4 影印紙" /></label>
@@ -407,19 +433,74 @@
             <label>直播日期<input required name="date" type="date" /></label>
             <label>直播間<select name="room"><option>抖音</option><option>小紅書</option><option>視頻號</option><option>淘寶直播</option><option>快手</option><option>拚多多</option></select></label>
             <label>主播<input name="host" placeholder="周逸秋" /></label>
-            <label>銷售產品<select required name="productId" id="liveSaleProduct"></select></label>
-            <label>缸號<select name="vat" id="liveSaleVat"></select></label>
-            <div class="product-summary" id="liveSaleProductCard"></div>
             <div class="two-col">
-              <label>銷售包數<span class="unit-field"><input required name="qty" type="number" min="1" step="1" /><b>包</b></span></label>
-              <label>直播單包售價<input required name="price" type="number" min="0" step="1" /></label>
+              <label>營收<input required name="revenue" id="liveSaleRevenue" type="number" min="0" step="1" /></label>
+              <label>退款<input name="refund" id="liveSaleRefund" type="number" min="0" step="1" value="0" /></label>
             </div>
+            <label>淨營收<input readonly name="netRevenue" id="liveSaleNetRevenue" type="number" min="0" step="1" /></label>
             <label>備註<input name="note" /></label>
             <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2>直播間銷售紀錄</h2><span id="liveSaleCount" class="pill">0 筆</span></div>
-            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>日期</th><th>直播間</th><th>主播</th><th>產品編號</th><th>銷售產品</th><th>缸號</th><th>包數</th><th>單包售價</th><th>銷售額</th><th></th></tr></thead><tbody id="liveSaleRows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>日期</th><th>直播間</th><th>主播</th><th>營收</th><th>退款</th><th>淨營收</th><th>備註</th><th></th></tr></thead><tbody id="liveSaleRows"></tbody></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="knitters">
+        <div class="section-tabs" role="tablist" aria-label="織女系統">
+          <button class="section-tab active" data-knitter-tab="profiles" type="button">織女資料</button>
+          <button class="section-tab" data-knitter-tab="samples" type="button">樣衣&配件</button>
+          <button class="section-tab" data-knitter-tab="inventory" type="button">樣衣&配件庫存</button>
+        </div>
+        <div class="workspace knitter-panel active" data-knitter-panel="profiles">
+          <form class="editor" id="knitterForm">
+            <h2>織女資料</h2>
+            <label>簽約日期<input required name="contractDate" type="date" /></label>
+            <label>織女姓名<input required name="name" placeholder="織女姓名" /></label>
+            <fieldset class="check-panel">
+              <legend>樣衣款式</legend>
+              <label><input type="checkbox" name="styles" value="無袖" />無袖 <input name="price_無袖" type="number" min="0" step="1" placeholder="單價" /></label>
+              <label><input type="checkbox" name="styles" value="長袖" />長袖 <input name="price_長袖" type="number" min="0" step="1" placeholder="單價" /></label>
+              <label><input type="checkbox" name="styles" value="大衣" />大衣 <input name="price_大衣" type="number" min="0" step="1" placeholder="單價" /></label>
+              <label><input type="checkbox" name="styles" value="背心" />背心 <input name="price_背心" type="number" min="0" step="1" placeholder="單價" /></label>
+              <label><input type="checkbox" name="styles" value="配件" />配件 <input name="price_配件" type="number" min="0" step="1" placeholder="單價" /></label>
+            </fieldset>
+            <label>交期<span class="unit-field"><input required name="leadTime" type="number" min="1" step="1" /><b>天</b></span></label>
+            <label>可否提供教程<select name="tutorialAvailable"><option>可</option><option>否</option></select></label>
+            <label>結款日<input required name="settlementDate" type="date" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>織女清單</h2><span id="knitterCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>簽約日期</th><th>織女姓名</th><th>樣衣款式</th><th>單價</th><th>交期</th><th>教程</th><th>結款日</th><th></th></tr></thead><tbody id="knitterRows"></tbody></table></div>
+          </section>
+        </div>
+        <div class="workspace knitter-panel" data-knitter-panel="samples">
+          <form class="editor" id="sampleForm">
+            <h2>樣衣&配件</h2>
+            <label>織女姓名<select required name="knitterId" id="sampleKnitter"></select></label>
+            <label>收到日期<input required name="receivedDate" type="date" /></label>
+            <input type="hidden" name="imageData" />
+            <label>圖片<input name="imageFile" id="sampleImageInput" type="file" accept="image/*" /></label>
+            <div class="image-preview" id="sampleImagePreview">尚未選擇圖片</div>
+            <label>狀態<select name="status"><option>編織中</option><option>寄送中</option><option>已到貨</option></select></label>
+            <label>樣衣款式<select name="style"><option>無袖</option><option>長袖</option><option>大衣</option><option>背心</option><option>配件</option></select></label>
+            <label>是否有教程<select name="hasTutorial"><option>是</option><option>否</option></select></label>
+            <label>單價<input required name="price" type="number" min="0" step="1" /></label>
+            <label>是否已結清<select name="settled"><option>未支付</option><option>已結清</option></select></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>樣衣&配件紀錄</h2><span id="sampleCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>織女姓名</th><th>收到日期</th><th>狀態</th><th>樣衣款式</th><th>教程</th><th>單價</th><th>結清</th><th></th></tr></thead><tbody id="sampleRows"></tbody></table></div>
+          </section>
+        </div>
+        <div class="knitter-panel" data-knitter-panel="inventory">
+          <section class="panel">
+            <div class="panel-head"><h2>樣衣&配件庫存</h2><span id="sampleInventoryCount" class="pill">0 件</span></div>
+            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>款式</th><th>織女姓名</th><th>收到日期</th><th>狀態</th><th>教程</th><th>單價</th><th>結清</th></tr></thead><tbody id="sampleInventoryRows"></tbody></table></div>
           </section>
         </div>
       </section>
