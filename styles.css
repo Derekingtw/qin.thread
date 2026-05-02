@@ -659,6 +659,23 @@ input[type="file"] {
   height: 18px;
 }
 
+.form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.form-actions .primary-btn,
+.form-actions .ghost-light-btn {
+  min-width: 128px;
+}
+
+.form-actions button:disabled {
+  opacity: 0.46;
+  cursor: not-allowed;
+}
+
 .staff-extra.active {
   display: grid;
   gap: 14px;

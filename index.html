@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-01" />
+    <link rel="stylesheet" href="styles.css?v=20260503-02" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -544,7 +544,11 @@
               <label>合夥責任<input name="partnerDuty" placeholder="例：渠道拓展與銷售目標" /></label>
             </div>
             <label>備註<input name="note" /></label>
-            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+            <div class="form-actions">
+              <button class="primary-btn" id="addStaffBtn" type="submit"><i data-lucide="plus"></i><span>新增人員</span></button>
+              <button class="ghost-light-btn" id="updateStaffBtn" type="button" disabled><i data-lucide="save"></i><span>修改人員</span></button>
+              <button class="ghost-light-btn" data-reset-form="staffForm" type="button"><i data-lucide="rotate-ccw"></i><span>清空</span></button>
+            </div>
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2>員工資料</h2><span id="staffCount" class="pill">0 人</span></div>
@@ -761,7 +765,11 @@
             <h2>職位設定</h2>
             <input type="hidden" name="oldName" />
             <label>職位名稱<input required name="name" placeholder="例如：直播主管" /></label>
-            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span id="positionSubmitText">新增</span></button>
+            <div class="form-actions">
+              <button class="primary-btn" id="addPositionBtn" type="submit"><i data-lucide="plus"></i><span>新增職位</span></button>
+              <button class="ghost-light-btn" id="updatePositionBtn" type="button" disabled><i data-lucide="save"></i><span>修改職位</span></button>
+              <button class="ghost-light-btn" data-reset-form="positionForm" type="button"><i data-lucide="rotate-ccw"></i><span>清空</span></button>
+            </div>
           </form>
           <section class="panel wide setting-panel active" data-setting-panel="positions">
             <div class="panel-head"><h2>職位清單</h2><span id="positionCount" class="pill">0 筆</span></div>

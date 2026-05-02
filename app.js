@@ -1180,6 +1180,16 @@ function setStaffTab(tab) {
   $$("[data-staff-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.staffPanel === tab));
 }
 
+function setStaffEditMode(editing) {
+  $("#addStaffBtn").disabled = editing;
+  $("#updateStaffBtn").disabled = !editing;
+}
+
+function setPositionEditMode(editing) {
+  $("#addPositionBtn").disabled = editing;
+  $("#updatePositionBtn").disabled = !editing;
+}
+
 function fillForm(form, data) {
   Object.entries(data).forEach(([key, value]) => {
     if (form.elements[key]) form.elements[key].value = value;
@@ -1191,10 +1201,11 @@ function fillForm(form, data) {
   if (form.id === "staffForm") {
     form.elements.role.value = normalizeStaffRole(form.elements.role.value);
     if (form.elements.accountPassword) form.elements.accountPassword.value = "";
+    setStaffEditMode(Boolean(form.elements.id?.value));
   }
   if (form.id === "positionForm") {
     form.elements.oldName.value = "";
-    $("#positionSubmitText").textContent = "新增";
+    setPositionEditMode(false);
   }
 }
 
@@ -1217,6 +1228,11 @@ function resetForm(form) {
   }
   if (form.id === "staffForm") {
     setStaffTab(staffTab);
+    setStaffEditMode(false);
+  }
+  if (form.id === "positionForm") {
+    form.elements.oldName.value = "";
+    setPositionEditMode(false);
   }
   if (form.id === "sampleForm") {
     form.elements.imageData.value = "";
@@ -1424,6 +1440,16 @@ function upsertStaff(form) {
   resetForm(form);
   toast(data.id ? "員工資料已修改" : "員工資料已新增");
   renderAll();
+}
+
+function addStaff(form) {
+  if (form.elements.id.value) return toast("目前正在修改人事資料，請先清空再新增");
+  upsertStaff(form);
+}
+
+function updateStaff(form) {
+  if (!form.elements.id.value) return toast("請先點選人事資料清單中的編輯");
+  upsertStaff(form);
 }
 
 function addDoc(form, kind) {
@@ -1664,6 +1690,16 @@ function upsertPosition(form) {
   renderAll();
 }
 
+function addPosition(form) {
+  if (form.elements.oldName.value) return toast("目前正在修改職位，請先清空再新增");
+  upsertPosition(form);
+}
+
+function updatePosition(form) {
+  if (!form.elements.oldName.value) return toast("請先點選職位清單中的編輯");
+  upsertPosition(form);
+}
+
 function addAnnouncement(form) {
   if (currentUser?.role !== "admin") return toast("只有管理者可以新增公告");
   const data = Object.fromEntries(new FormData(form));
@@ -1777,7 +1813,7 @@ function editItem(type, id) {
     const form = $("#positionForm");
     form.elements.oldName.value = id;
     form.elements.name.value = id;
-    $("#positionSubmitText").textContent = "修改";
+    setPositionEditMode(true);
     form.elements.name.focus();
   }
 }
@@ -2151,8 +2187,9 @@ function bindEvents() {
   });
   $("#staffForm").addEventListener("submit", (event) => {
     event.preventDefault();
-    upsertStaff(event.currentTarget);
+    addStaff(event.currentTarget);
   });
+  $("#updateStaffBtn").addEventListener("click", () => updateStaff($("#staffForm")));
   $("#contractForm").addEventListener("submit", (event) => {
     event.preventDefault();
     generateContract(event.currentTarget);
@@ -2174,7 +2211,11 @@ function bindEvents() {
   });
   $("#positionForm").addEventListener("submit", (event) => {
     event.preventDefault();
-    upsertPosition(event.currentTarget);
+    addPosition(event.currentTarget);
+  });
+  $("#updatePositionBtn").addEventListener("click", () => updatePosition($("#positionForm")));
+  $$("[data-reset-form]").forEach((button) => {
+    button.addEventListener("click", () => resetForm($(`#${button.dataset.resetForm}`)));
   });
   $("#leaveForm").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -2266,6 +2307,7 @@ async function init() {
   resetForm($("#knitterForm"));
   resetForm($("#sampleForm"));
   resetForm($("#staffForm"));
+  resetForm($("#positionForm"));
   resetForm($("#leaveForm"));
   resetForm($("#tripForm"));
   resetForm($("#purchaseRequestForm"));
