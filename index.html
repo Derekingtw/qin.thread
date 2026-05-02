@@ -759,8 +759,9 @@
         <div class="workspace">
           <form class="editor setting-editor active" id="positionForm" data-setting-panel="positions">
             <h2>職位設定</h2>
+            <input type="hidden" name="oldName" />
             <label>職位名稱<input required name="name" placeholder="例如：直播主管" /></label>
-            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span id="positionSubmitText">新增</span></button>
           </form>
           <section class="panel wide setting-panel active" data-setting-panel="positions">
             <div class="panel-head"><h2>職位清單</h2><span id="positionCount" class="pill">0 筆</span></div>

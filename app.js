@@ -985,7 +985,7 @@ function renderSettings() {
   $("#positionCount").textContent = `${rows.length} 筆`;
   $("#positionRows").innerHTML = rows.map((name) => `<tr>
     <td>${name}</td>
-    <td>${rowActions("position", name)}</td>
+    <td>${rowActions("position", name, true)}</td>
   </tr>`).join("") || emptyRow(2);
   const users = state.settings.users || [];
   $("#permissionCount").textContent = `${users.length} 人`;
@@ -1191,6 +1191,10 @@ function fillForm(form, data) {
   if (form.id === "staffForm") {
     form.elements.role.value = normalizeStaffRole(form.elements.role.value);
     if (form.elements.accountPassword) form.elements.accountPassword.value = "";
+  }
+  if (form.id === "positionForm") {
+    form.elements.oldName.value = "";
+    $("#positionSubmitText").textContent = "新增";
   }
 }
 
@@ -1641,15 +1645,22 @@ function addLiveSale(form) {
   renderAll();
 }
 
-function addPosition(form) {
+function upsertPosition(form) {
   const data = Object.fromEntries(new FormData(form));
   const name = data.name.trim();
+  const oldName = data.oldName?.trim() || "";
   if (!name) return;
-  if ((state.settings.positions || []).includes(name)) return toast("職位已存在");
-  state.settings.positions = [...(state.settings.positions || []), name];
+  const positions = state.settings.positions || [];
+  if (positions.some((item) => item === name && item !== oldName)) return toast("職位已存在");
+  if (oldName) {
+    state.settings.positions = positions.map((item) => item === oldName ? name : item);
+    state.staff = (state.staff || []).map((item) => item.title === oldName ? { ...item, title: name } : item);
+  } else {
+    state.settings.positions = [...positions, name];
+  }
   saveState();
   resetForm(form);
-  toast("職位已新增");
+  toast(oldName ? "職位已修改" : "職位已新增");
   renderAll();
 }
 
@@ -1759,6 +1770,15 @@ function editItem(type, id) {
     setStaffTab(staff?.employeeType || "regular");
     fillForm($("#staffForm"), staff);
     setView("staff");
+  }
+  if (type === "position") {
+    setView("settings");
+    setSettingTab("positions");
+    const form = $("#positionForm");
+    form.elements.oldName.value = id;
+    form.elements.name.value = id;
+    $("#positionSubmitText").textContent = "修改";
+    form.elements.name.focus();
   }
 }
 
@@ -2154,7 +2174,7 @@ function bindEvents() {
   });
   $("#positionForm").addEventListener("submit", (event) => {
     event.preventDefault();
-    addPosition(event.currentTarget);
+    upsertPosition(event.currentTarget);
   });
   $("#leaveForm").addEventListener("submit", (event) => {
     event.preventDefault();
