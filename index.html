@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260502-12" />
+    <link rel="stylesheet" href="styles.css?v=20260503-01" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -521,9 +521,14 @@
             <label>姓名<input required name="name" /></label>
             <label>性別<select name="gender"><option>女</option><option>男</option><option>其他</option></select></label>
             <label>部門<select name="dept"><option>待補資料</option><option>總經辦</option><option>直播營運部</option><option>執行部</option><option>品牌部</option></select></label>
-            <label>職位<select name="title" id="staffTitle"></select></label>
-            <label>角色<select name="role"><option>管理員</option><option>主管</option><option>員工</option><option>老闆</option></select></label>
-            <label>帳號／手機號<input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="登入帳號使用此手機號" /></label>
+            <label>職位（連接職位設定）<select name="title" id="staffTitle"></select></label>
+            <label>角色／系統權限<select name="role"><option>管理員</option><option>代理管理員</option><option>核心人員</option><option>普通人員</option></select></label>
+            <div class="account-editor">
+              <strong>帳號密碼修改</strong>
+              <label>登入帳號（手機號）<input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="此手機號即為登入帳號" /></label>
+              <label>新密碼<input name="accountPassword" type="password" autocomplete="new-password" placeholder="留空則不修改密碼" /></label>
+              <small>修改手機號會同步更新登入帳號；輸入新密碼才會覆蓋原密碼。</small>
+            </div>
             <label>入職日<input name="joinDate" type="date" /></label>
             <label>狀態<select name="status"><option>在職</option><option>離職</option></select></label>
             <div class="staff-extra active" data-staff-panel="regular">

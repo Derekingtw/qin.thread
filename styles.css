@@ -664,6 +664,33 @@ input[type="file"] {
   gap: 14px;
 }
 
+.account-editor {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(18, 214, 196, 0.28);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(18, 214, 196, 0.12), rgba(166, 38, 30, 0.06));
+}
+
+.account-editor strong,
+.account-editor small {
+  grid-column: 1 / -1;
+}
+
+.account-editor strong {
+  color: #5f1714;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.account-editor small {
+  color: #4e433a;
+  font-weight: 700;
+}
+
 .contract-preview {
   min-height: 560px;
   max-height: 72vh;
@@ -961,6 +988,7 @@ tr:last-child td { border-bottom: 0; }
   }
   .metric strong { font-size: 24px; }
   .two-col { grid-template-columns: 1fr; }
+  .account-editor { grid-template-columns: 1fr; }
   .workspace,
   .dashboard-grid {
     gap: 12px;

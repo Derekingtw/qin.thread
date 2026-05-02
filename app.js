@@ -12,6 +12,13 @@ const number = (value) => Number(value || 0).toLocaleString("zh-TW");
 const ceilNumber = (value) => Math.ceil(Number(value || 0));
 const normalizePhone = (value) => String(value || "").replace(/[^\d+]/g, "").trim();
 const phoneDigits = (value) => normalizePhone(value).replace(/\D/g, "");
+const staffRoleAliases = {
+  管理者: "管理員",
+  老闆: "管理員",
+  管理員: "管理員",
+  主管: "代理管理員",
+  員工: "普通人員",
+};
 const zhMap = {
   "時": "时", "線": "线", "進": "进", "銷": "销", "總": "总", "覽": "览", "庫": "库", "存": "存", "貨": "货",
   "單": "单", "號": "号", "國": "国", "內": "内", "類": "类", "別": "别", "廠": "厂", "團": "团", "數": "数",
@@ -121,6 +128,7 @@ function normalizeState(saved) {
     ...user,
     phone: normalizePhone(user.phone || user.username || ""),
     username: normalizePhone(user.phone || user.username || ""),
+    systemRole: user.systemRole || (user.role === "admin" ? "管理員" : "普通人員"),
   }));
   next.settings.positions = [...new Set(["待補資料", ...(next.settings.positions || []), ...((next.staff || []).map((item) => item.title).filter(Boolean))])];
   next.products = (next.products || []).map((product) => ({
@@ -181,7 +189,7 @@ function normalizeState(saved) {
   next.tripRequests = (next.tripRequests || []).map((item) => ({ ...item, amount: Number(item.amount || 0), status: item.status || "待審批" }));
   next.purchaseRequests = (next.purchaseRequests || []).map((item) => ({ ...item, qty: Number(item.qty || 1), amount: Number(item.amount || 0), status: item.status || "待審批" }));
   next.proposalRequests = (next.proposalRequests || []).map((item) => ({ ...item, status: item.status || "待審批" }));
-  next.staff = (next.staff || []).map((item) => ({ ...item, gender: item.gender || "女" }));
+  next.staff = (next.staff || []).map((item) => ({ ...item, gender: item.gender || "女", role: normalizeStaffRole(item.role) }));
   next.adminPayrolls = (next.adminPayrolls || []).map((item) => ({ ...item, ...payrollNumbers(item) }));
   next.livePayrolls = (next.livePayrolls || []).map((item) => ({ ...item, ...payrollNumbers(item), commission: Number(item.commission || 0), netRevenue: Number(item.netRevenue || 0) }));
   next.partnerBonuses = (next.partnerBonuses || []).map((item) => ({ ...item, netProfit: Number(item.netProfit || 0), bonusRate: Number(item.bonusRate || 0), bonusAmount: Number(item.bonusAmount || 0) }));
@@ -198,6 +206,24 @@ function findApproverIdByName(saved, name) {
 
 function findProductIn(saved, id) {
   return (saved?.products || []).find((item) => item.id === id);
+}
+
+function normalizeStaffRole(role) {
+  return staffRoleAliases[role] || role || "普通人員";
+}
+
+function permissionsForStaffRole(role) {
+  const normalized = normalizeStaffRole(role);
+  if (normalized === "管理員") return [...ALL_VIEWS];
+  if (normalized === "代理管理員") return ALL_VIEWS.filter((view) => view !== "settings");
+  if (normalized === "核心人員") {
+    return ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "leave", "approvals", "payroll", "tracking", "production"];
+  }
+  return ["dashboard", "products", "inventory", "sales", "liveSales", "leave"];
+}
+
+function accountRoleForStaffRole(role) {
+  return normalizeStaffRole(role) === "管理員" ? "admin" : "user";
 }
 
 function generateStaffCode() {
@@ -227,7 +253,7 @@ function ensureStaffForUser(user) {
     gender: "",
     dept: "待補資料",
     title: "待補資料",
-    role: user.role === "admin" ? "管理者" : "員工",
+    role: user.systemRole || (user.role === "admin" ? "管理員" : "普通人員"),
     phone,
     joinDate: today(),
     status: "在職",
@@ -239,15 +265,41 @@ function ensureStaffForUser(user) {
   return nextStaff.id;
 }
 
-function syncUserAccountFromStaff(staff, previousPhone = "") {
+function syncUserAccountFromStaff(staff, previousPhone = "", password = "") {
   const phone = normalizePhone(staff.phone);
   if (!phone) return;
   const oldPhone = normalizePhone(previousPhone);
+  let linkedFound = false;
   state.settings.users = (state.settings.users || []).map((user) => {
-    const linked = user.staffId === staff.id || (oldPhone && normalizePhone(user.phone || user.username) === oldPhone);
+    const accountPhone = normalizePhone(user.phone || user.username);
+    const linked = user.staffId === staff.id || accountPhone === phone || (oldPhone && accountPhone === oldPhone);
+    linkedFound = linkedFound || linked;
     if (!linked) return user;
-    return { ...user, name: staff.name || user.name, phone, username: phone };
+    return {
+      ...user,
+      name: staff.name || user.name,
+      phone,
+      username: phone,
+      password: password || user.password,
+      staffId: staff.id,
+      systemRole: normalizeStaffRole(staff.role),
+      role: accountRoleForStaffRole(staff.role),
+      permissions: permissionsForStaffRole(staff.role),
+    };
   });
+  if (!linkedFound && password) {
+    state.settings.users.push({
+      id: uid("usr"),
+      name: staff.name,
+      username: phone,
+      phone,
+      password,
+      staffId: staff.id,
+      systemRole: normalizeStaffRole(staff.role),
+      role: accountRoleForStaffRole(staff.role),
+      permissions: permissionsForStaffRole(staff.role),
+    });
+  }
   if (currentUser?.staffId === staff.id || (oldPhone && normalizePhone(currentUser?.phone || currentUser?.username) === oldPhone)) {
     saveSession(phone);
   }
@@ -313,6 +365,7 @@ function registerUser(form) {
     phone,
     password: data.password,
     role: isFirst ? "admin" : "user",
+    systemRole: isFirst ? "管理員" : "普通人員",
     permissions: isFirst ? [...ALL_VIEWS] : ["dashboard"],
   };
   user.staffId = ensureStaffForUser(user);
@@ -455,7 +508,7 @@ function staffOptions(select, supervisorsOnly = false) {
   const rows = (state.staff || []).filter((item) => {
     if (item.status === "離職") return false;
     if (!supervisorsOnly) return true;
-    return ["主管", "管理員", "老闆"].includes(item.role) || ["負責人", "主管"].some((key) => String(item.title || "").includes(key));
+    return ["管理員", "代理管理員"].includes(normalizeStaffRole(item.role)) || ["負責人", "主管"].some((key) => String(item.title || "").includes(key));
   });
   select.innerHTML = rows.map((item) => `<option value="${item.id}">${item.name} · ${item.title || item.role || "人事"}</option>`).join("") || `<option value="">請先建立人事資料</option>`;
 }
@@ -623,12 +676,12 @@ function renderDashboard() {
 function renderDashboardExtras() {
   const announcements = currentRows(state.announcements || []).sort((a, b) => b.createdAt - a.createdAt);
   $("#announcementCount").textContent = `${announcements.length} 則`;
-  $("#announcementForm").classList.toggle("hidden", currentUser?.role !== "admin");
+  $("#announcementForm").classList.toggle("hidden", currentUser?.role !== "admin" && currentUser?.systemRole !== "管理員");
   $("#announcementRows").innerHTML = announcements.map((item) => `
     <article class="announcement-item">
       <div><strong>${item.title}</strong><span>${new Date(item.createdAt).toLocaleString("zh-TW")} · ${item.author || "管理者"}</span></div>
       <p>${item.content}</p>
-      ${currentUser?.role === "admin" ? rowActions("announcement", item.id) : ""}
+      ${currentUser?.role === "admin" || currentUser?.systemRole === "管理員" ? rowActions("announcement", item.id) : ""}
     </article>
   `).join("") || `<p class="empty">尚無公告</p>`;
 
@@ -938,7 +991,7 @@ function renderSettings() {
   $("#permissionCount").textContent = `${users.length} 人`;
   $("#permissionRows").innerHTML = users.map((user) => `
     <article class="permission-card">
-      <div><strong>${user.name}</strong><span>${user.phone || user.username} · ${user.role === "admin" ? "管理者" : "一般帳號"}</span></div>
+      <div><strong>${user.name}</strong><span>${user.phone || user.username} · ${user.systemRole || (user.role === "admin" ? "管理員" : "普通人員")}</span></div>
       <div class="permission-grid">
         ${ALL_VIEWS.map((view) => `<label><input type="checkbox" data-permission-user="${user.id}" value="${view}" ${user.role === "admin" || (user.permissions || []).includes(view) ? "checked" : ""} ${user.role === "admin" ? "disabled" : ""}>${viewLabel(view)}</label>`).join("")}
       </div>
@@ -1134,6 +1187,10 @@ function fillForm(form, data) {
   if (form.id === "sellProductForm") {
     updatePackageCount();
     renderProductImagePreview(form.elements.imageData.value);
+  }
+  if (form.id === "staffForm") {
+    form.elements.role.value = normalizeStaffRole(form.elements.role.value);
+    if (form.elements.accountPassword) form.elements.accountPassword.value = "";
   }
 }
 
@@ -1340,7 +1397,7 @@ function upsertStaff(form) {
     gender: data.gender || "女",
     dept: data.dept,
     title: data.title,
-    role: data.role,
+    role: normalizeStaffRole(data.role),
     phone: normalizePhone(data.phone),
     joinDate: data.joinDate,
     status: data.status,
@@ -1354,8 +1411,11 @@ function upsertStaff(form) {
     note: data.note.trim(),
     createdAt: data.id ? (existing?.createdAt || Date.now()) : Date.now(),
   };
+  if (payload.phone && phoneDigits(payload.phone).length < 8) return toast("帳號手機號格式不正確");
+  if (data.accountPassword && !payload.phone) return toast("請先填寫登入帳號手機號");
+  if (payload.phone && state.staff.some((item) => item.id !== payload.id && normalizePhone(item.phone) === payload.phone)) return toast("此帳號手機號已存在於人事資料");
   state.staff = data.id ? state.staff.map((item) => item.id === data.id ? payload : item) : [...state.staff, payload];
-  syncUserAccountFromStaff(payload, existing?.phone);
+  syncUserAccountFromStaff(payload, existing?.phone, data.accountPassword || "");
   saveState();
   resetForm(form);
   toast(data.id ? "員工資料已修改" : "員工資料已新增");
