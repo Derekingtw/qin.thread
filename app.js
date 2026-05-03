@@ -15,6 +15,7 @@ const money = (value) => Number(value || 0).toLocaleString("zh-TW", { style: "cu
 const number = (value) => Number(value || 0).toLocaleString("zh-TW");
 const ceilNumber = (value) => Math.ceil(Number(value || 0));
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_BACKGROUND_BYTES = 2 * 1024 * 1024;
 const normalizePhone = (value) => String(value || "").replace(/[^\d+]/g, "").trim();
 const phoneDigits = (value) => normalizePhone(value).replace(/\D/g, "");
 const staffRoleAliases = {
@@ -62,6 +63,14 @@ const defaultState = () => ({
     positions: ["負責人", "主管", "執行負責", "品牌助理"],
     users: [],
     growthLevelNames: {},
+    appearance: {
+      backgroundColor: "#fffaf0",
+      backgroundImage: "",
+      backgroundImageName: "",
+      backgroundImageSize: 0,
+      backgroundImageWidth: 0,
+      backgroundImageHeight: 0,
+    },
   },
   meta: {
     updatedAt: 0,
@@ -134,6 +143,10 @@ function normalizeState(saved) {
   next.settings = {
     ...defaultState().settings,
     ...(saved?.settings || {}),
+  };
+  next.settings.appearance = {
+    ...defaultState().settings.appearance,
+    ...(saved?.settings?.appearance || {}),
   };
   next.meta = {
     updatedAt: Number(saved?.meta?.updatedAt || 0),
@@ -352,6 +365,13 @@ function saveState() {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(state),
   }).catch(() => {});
+}
+
+function applyAppearanceSettings() {
+  const appearance = state.settings?.appearance || {};
+  const color = appearance.backgroundColor || "#fffaf0";
+  document.documentElement.style.setProperty("--oa-bg-color", color);
+  document.documentElement.style.setProperty("--oa-bg-image", appearance.backgroundImage ? `url("${appearance.backgroundImage}")` : "none");
 }
 
 function loadSession() {
@@ -1130,6 +1150,42 @@ function renderSettings() {
       </div>
     </article>
   `).join("") || `<p class="empty">尚無帳號</p>`;
+  renderAppearanceSettings();
+}
+
+function formatBytes(bytes) {
+  const value = Number(bytes || 0);
+  if (!value) return "-";
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(0)} KB`;
+  return `${(value / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function renderAppearanceSettings() {
+  const appearance = state.settings?.appearance || {};
+  const form = $("#appearanceForm");
+  if (form) {
+    form.elements.backgroundColor.value = appearance.backgroundColor || "#fffaf0";
+    form.elements.backgroundImage.value = appearance.backgroundImage || "";
+  }
+  renderBackgroundPreview();
+}
+
+function renderBackgroundPreview() {
+  const appearance = state.settings?.appearance || {};
+  const preview = $("#backgroundPreview");
+  const meta = $("#backgroundMeta");
+  if (preview) {
+    preview.innerHTML = appearance.backgroundImage
+      ? `<img src="${appearance.backgroundImage}" alt="背景圖片預覽" />`
+      : `<span>尚未上傳背景圖</span>`;
+  }
+  if (meta) {
+    const size = formatBytes(appearance.backgroundImageSize);
+    const dimensions = appearance.backgroundImageWidth && appearance.backgroundImageHeight
+      ? `${appearance.backgroundImageWidth} × ${appearance.backgroundImageHeight}px`
+      : "-";
+    meta.textContent = appearance.backgroundImage ? `目前圖片：${appearance.backgroundImageName || "背景圖"}｜檔案大小 ${size}｜尺寸 ${dimensions}` : "目前未使用背景圖";
+  }
 }
 
 function viewLabel(view) {
@@ -1493,6 +1549,7 @@ function downloadTradeWord() {
 }
 
 function renderAll() {
+  applyAppearanceSettings();
   syncSelects();
   renderDashboard();
   renderProducts();
@@ -1734,6 +1791,77 @@ function handleProductImage(event) {
     renderProductImagePreview(reader.result);
   };
   reader.readAsDataURL(file);
+}
+
+function handleBackgroundImage(event) {
+  const file = event.target.files?.[0];
+  const form = $("#appearanceForm");
+  if (!file || !form) return;
+  if (!file.type.startsWith("image/")) {
+    toast("請上傳圖片檔案");
+    event.target.value = "";
+    return;
+  }
+  if (file.size > MAX_BACKGROUND_BYTES) {
+    toast("背景圖不可超過 2MB");
+    event.target.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const image = new Image();
+    image.onload = () => {
+      form.elements.backgroundImage.value = reader.result;
+      state.settings.appearance = {
+        ...(state.settings.appearance || {}),
+        backgroundColor: form.elements.backgroundColor.value || "#fffaf0",
+        backgroundImage: reader.result,
+        backgroundImageName: file.name,
+        backgroundImageSize: file.size,
+        backgroundImageWidth: image.naturalWidth,
+        backgroundImageHeight: image.naturalHeight,
+      };
+      saveState();
+      applyAppearanceSettings();
+      renderBackgroundPreview();
+      toast("背景圖已套用");
+    };
+    image.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveAppearanceSettings(form) {
+  const data = Object.fromEntries(new FormData(form));
+  state.settings.appearance = {
+    ...(state.settings.appearance || {}),
+    backgroundColor: data.backgroundColor || "#fffaf0",
+    backgroundImage: data.backgroundImage || "",
+  };
+  saveState();
+  applyAppearanceSettings();
+  renderBackgroundPreview();
+  toast("外觀設定已儲存");
+}
+
+function clearBackgroundImage() {
+  state.settings.appearance = {
+    ...(state.settings.appearance || {}),
+    backgroundImage: "",
+    backgroundImageName: "",
+    backgroundImageSize: 0,
+    backgroundImageWidth: 0,
+    backgroundImageHeight: 0,
+  };
+  const form = $("#appearanceForm");
+  if (form) {
+    form.elements.backgroundImage.value = "";
+    $("#backgroundImageInput").value = "";
+  }
+  saveState();
+  applyAppearanceSettings();
+  renderBackgroundPreview();
+  toast("背景圖已移除");
 }
 
 function updateLiveSaleNet() {
@@ -2630,6 +2758,12 @@ function bindEvents() {
   $("#productImageInput").addEventListener("change", handleProductImage);
   $("#staffAvatarInput").addEventListener("change", (event) => handleImageUpload(event, "staffForm", "staffAvatarPreview", "avatarData"));
   $("#sampleImageInput").addEventListener("change", (event) => handleImageUpload(event, "sampleForm", "sampleImagePreview"));
+  $("#backgroundImageInput").addEventListener("change", handleBackgroundImage);
+  $("#appearanceForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    saveAppearanceSettings(event.currentTarget);
+  });
+  $("#clearBackgroundImageBtn").addEventListener("click", clearBackgroundImage);
   $("#liveSaleRevenue").addEventListener("input", updateLiveSaleNet);
   $("#liveSaleRefund").addEventListener("input", updateLiveSaleNet);
   $("#tradeForm").addEventListener("input", updateTradeAutoFields);

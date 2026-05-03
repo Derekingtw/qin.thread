@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-14" />
+    <link rel="stylesheet" href="styles.css?v=20260503-15" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -936,6 +936,7 @@
         <div class="section-tabs" role="tablist" aria-label="資料設定分類">
           <button class="section-tab active" data-setting-tab="positions" type="button">職位設定</button>
           <button class="section-tab" data-setting-tab="permissions" type="button">OA 權限設定</button>
+          <button class="section-tab" data-setting-tab="appearance" type="button">外觀設定</button>
         </div>
         <div class="workspace">
           <form class="editor setting-editor active" id="positionForm" data-setting-panel="positions">
@@ -961,11 +962,26 @@
             <div class="panel-head"><h2>人員使用 OA 系統權限</h2><span id="permissionCount" class="pill">0 人</span></div>
             <div class="permission-list" id="permissionRows"></div>
           </section>
+          <form class="editor setting-panel wide" id="appearanceForm" data-setting-panel="appearance">
+            <h2>外觀設定</h2>
+            <input type="hidden" name="backgroundImage" />
+            <div class="form-grid two">
+              <label>背景顏色<input name="backgroundColor" type="color" value="#fffaf0" /></label>
+              <label>背景圖片<input id="backgroundImageInput" type="file" accept="image/*" /></label>
+            </div>
+            <p class="field-note danger">背景圖限制：最大 2MB。建議尺寸：桌機 1920 × 1080px，手機 1080 × 1920px，格式 JPG / PNG / WebP。</p>
+            <div class="background-preview" id="backgroundPreview"><span>尚未上傳背景圖</span></div>
+            <p class="field-note" id="backgroundMeta">目前未使用背景圖</p>
+            <div class="form-actions">
+              <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存外觀</span></button>
+              <button class="ghost-light-btn" id="clearBackgroundImageBtn" type="button"><i data-lucide="image-off"></i><span>移除背景圖</span></button>
+            </div>
+          </form>
         </div>
       </section>
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260503-19"></script>
+    <script src="app.js?v=20260503-20"></script>
   </body>
 </html>
