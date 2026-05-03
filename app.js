@@ -58,6 +58,7 @@ const defaultState = () => ({
   settings: {
     positions: ["負責人", "主管", "執行負責", "品牌助理"],
     users: [],
+    growthLevelNames: {},
   },
   meta: {
     updatedAt: 0,
@@ -198,7 +199,7 @@ function normalizeState(saved) {
   next.tripRequests = (next.tripRequests || []).map((item) => ({ ...item, amount: Number(item.amount || 0), status: item.status || "待審批" }));
   next.purchaseRequests = (next.purchaseRequests || []).map((item) => ({ ...item, qty: Number(item.qty || 1), amount: Number(item.amount || 0), status: item.status || "待審批" }));
   next.proposalRequests = (next.proposalRequests || []).map((item) => ({ ...item, status: item.status || "待審批" }));
-  next.staff = (next.staff || []).map((item) => ({ ...item, gender: item.gender || "女", role: normalizeStaffRole(item.role) }));
+  next.staff = (next.staff || []).map((item) => ({ ...item, gender: item.gender || "女", role: normalizeStaffRole(item.role), avatarData: item.avatarData || "" }));
   next.adminPayrolls = (next.adminPayrolls || []).map((item) => ({ ...item, ...payrollNumbers(item) }));
   next.livePayrolls = (next.livePayrolls || []).map((item) => ({ ...item, ...payrollNumbers(item), commission: Number(item.commission || 0), netRevenue: Number(item.netRevenue || 0) }));
   next.partnerBonuses = (next.partnerBonuses || []).map((item) => ({ ...item, netProfit: Number(item.netProfit || 0), bonusRate: Number(item.bonusRate || 0), bonusAmount: Number(item.bonusAmount || 0) }));
@@ -533,6 +534,14 @@ function positionOptions(select) {
   select.innerHTML = (state.settings?.positions || []).map((name) => `<option value="${name}">${name}</option>`).join("") || `<option value="">請先建立職位</option>`;
 }
 
+function growthLevelOptions(select) {
+  if (!select) return;
+  select.innerHTML = Array.from({ length: MAX_GROWTH_LEVEL }, (_, index) => {
+    const level = index + 1;
+    return `<option value="${level}">Lv.${level} ${growthLevelName(level)}</option>`;
+  }).join("");
+}
+
 function staffOptions(select, supervisorsOnly = false) {
   if (!select) return;
   const rows = (state.staff || []).filter((item) => {
@@ -551,26 +560,43 @@ function staffById(id) {
   return (state.staff || []).find((item) => item.id === id);
 }
 
-const GROWTH_LEVELS = [
-  { name: "新人", min: 0 },
-  { name: "熟手", min: 100 },
-  { name: "核心", min: 260 },
-  { name: "主管", min: 520 },
-  { name: "合夥候選", min: 900 },
-  { name: "合夥人", min: 1400 },
-];
+function avatarMarkup(staff, size = "md") {
+  const name = staff?.name || "?";
+  const initial = escapeHtml(String(name).slice(0, 1) || "?");
+  return `<span class="avatar ${size}">${staff?.avatarData ? `<img src="${staff.avatarData}" alt="${escapeHtml(name)}頭像" />` : initial}</span>`;
+}
+
+const MAX_GROWTH_LEVEL = 100;
+const XP_PER_LEVEL = 100;
+
+function defaultGrowthLevelName(level) {
+  if (level >= 100) return "合夥人";
+  if (level >= 80) return "合夥候選";
+  if (level >= 60) return "主管";
+  if (level >= 35) return "核心";
+  if (level >= 15) return "熟手";
+  return "新人";
+}
+
+function growthLevelName(level) {
+  return state.settings?.growthLevelNames?.[level] || defaultGrowthLevelName(level);
+}
 
 function staffXp(staffId) {
-  return (state.growthRecords || []).filter((record) => record.staffId === staffId).reduce((sum, record) => sum + Number(record.xp || 0), 0);
+  return Math.max(0, (state.growthRecords || []).filter((record) => record.staffId === staffId).reduce((sum, record) => sum + Number(record.xp || 0), 0));
 }
 
 function growthLevel(xp) {
-  const currentIndex = GROWTH_LEVELS.reduce((match, level, index) => xp >= level.min ? index : match, 0);
-  const current = GROWTH_LEVELS[currentIndex];
-  const next = GROWTH_LEVELS[currentIndex + 1];
-  const span = next ? next.min - current.min : 1;
-  const progress = next ? Math.min(100, Math.round(((xp - current.min) / span) * 100)) : 100;
-  return { ...current, index: currentIndex + 1, next, progress };
+  const level = Math.min(MAX_GROWTH_LEVEL, Math.floor(Math.max(0, xp) / XP_PER_LEVEL) + 1);
+  const currentMin = (level - 1) * XP_PER_LEVEL;
+  const nextMin = level * XP_PER_LEVEL;
+  const progress = level >= MAX_GROWTH_LEVEL ? 100 : Math.min(100, Math.round(((xp - currentMin) / (nextMin - currentMin)) * 100));
+  return {
+    index: level,
+    name: growthLevelName(level),
+    next: level < MAX_GROWTH_LEVEL ? { index: level + 1, min: nextMin, name: growthLevelName(level + 1) } : null,
+    progress,
+  };
 }
 
 function currentUserStaff() {
@@ -588,6 +614,8 @@ function updateLoginGrowthStrip() {
   $("#loginUserLevel").textContent = `Lv.${level.index} ${level.name}`;
   $("#loginUserXpBar").style.width = `${level.progress}%`;
   $("#loginUserXpPercent").textContent = `${level.progress}%`;
+  const strip = $("#userGrowthStrip");
+  if (strip) strip.style.setProperty("--avatar", staff?.avatarData ? `url("${staff.avatarData}")` : "none");
 }
 
 function staffGender(id) {
@@ -667,6 +695,7 @@ function syncSelects() {
   partnerOptions($("#shipmentPartner"), "customer");
   liveShowOptions($("#liveSaleShow"));
   positionOptions($("#staffTitle"));
+  growthLevelOptions($("#growthLevelSelect"));
   ["leaveStaff", "tripStaff", "purchaseRequestStaff", "proposalStaff", "growthStaff"].forEach((id) => staffOptions($(`#${id}`)));
   ["adminPayrollStaff", "livePayrollStaff", "partnerBonusStaff"].forEach((id) => staffOptions($(`#${id}`)));
   ["leaveApprover", "tripApprover", "purchaseRequestApprover", "proposalApprover"].forEach((id) => staffOptions($(`#${id}`), true));
@@ -1080,10 +1109,9 @@ function renderGrowth() {
   $("#growthProfiles").innerHTML = staffRows.map((staff) => {
     const xp = staffXp(staff.id);
     const level = growthLevel(xp);
-    const nextText = level.next ? `距離 ${level.next.name} 還差 ${number(level.next.min - xp)} EXP` : "已達最高等級";
+    const nextText = level.next ? `距離 Lv.${level.next.index} ${level.next.name} 還差 ${number(level.next.min - xp)} EXP` : "已達最高等級";
     return `<article class="growth-card">
-      <div class="growth-card-head"><strong>${staff.name}</strong><span>Lv.${level.index} ${level.name}</span></div>
-      <small>${staff.title || "待補職位"} · ${staff.dept || "待補部門"}</small>
+      <div class="growth-card-head">${avatarMarkup(staff)}<div><strong>${staff.name}</strong><small>${staff.title || "待補職位"} · ${staff.dept || "待補部門"}</small></div><span>Lv.${level.index} ${level.name}</span></div>
       <div class="growth-progress"><i style="width:${level.progress}%"></i></div>
       <div class="growth-meta"><span>${number(xp)} EXP</span><b>${level.progress}%</b></div>
       <p>${nextText}</p>
@@ -1096,7 +1124,7 @@ function renderGrowth() {
     <td>${record.date || "-"}</td>
     <td>${staffName(record.staffId)}</td>
     <td>${tag(record.category || "-", "blue")}</td>
-    <td class="num">+${number(record.xp)} EXP</td>
+    <td class="num">${Number(record.xp) > 0 ? "+" : ""}${number(record.xp)} EXP</td>
     <td>${record.note || "-"}</td>
     <td>${rowActions("growthRecord", record.id)}</td>
   </tr>`).join("") || emptyRow(6);
@@ -1517,6 +1545,7 @@ function fillForm(form, data) {
     form.elements.role.value = normalizeStaffRole(form.elements.role.value);
     if (form.elements.accountPassword) form.elements.accountPassword.value = "";
     setStaffEditMode(Boolean(form.elements.id?.value));
+    renderImagePreview("staffAvatarPreview", form.elements.avatarData?.value || "");
   }
   if (form.id === "positionForm") {
     form.elements.oldName.value = "";
@@ -1546,8 +1575,14 @@ function resetForm(form) {
     form.elements.nationality.value = "台灣";
   }
   if (form.id === "staffForm") {
+    form.elements.avatarData.value = "";
+    renderImagePreview("staffAvatarPreview", "");
     setStaffTab(staffTab);
     setStaffEditMode(false);
+  }
+  if (form.id === "growthLevelForm") {
+    form.elements.level.value = "1";
+    form.elements.name.value = growthLevelName(1);
   }
   if (form.id === "positionForm") {
     form.elements.oldName.value = "";
@@ -1747,6 +1782,7 @@ function upsertStaff(form) {
     title: data.title,
     role: normalizeStaffRole(data.role),
     phone: normalizePhone(data.phone),
+    avatarData: data.avatarData || "",
     joinDate: data.joinDate,
     status: data.status,
     employeeType: data.employeeType || staffTab,
@@ -1844,7 +1880,7 @@ function addGrowthRecord(form) {
   const data = Object.fromEntries(new FormData(form));
   const xp = Number(data.xp || 0);
   if (!data.staffId) return toast("請先選擇人員");
-  if (xp <= 0) return toast("經驗值需大於 0");
+  if (xp === 0) return toast("經驗值不能為 0，可輸入正數或負數");
   state.growthRecords = [
     { id: uid("grow"), staffId: data.staffId, category: data.category, xp, date: data.date || today(), note: data.note?.trim() || "", createdAt: Date.now() },
     ...(state.growthRecords || []),
@@ -1852,6 +1888,19 @@ function addGrowthRecord(form) {
   saveState();
   resetForm(form);
   toast("養成紀錄已新增");
+  renderAll();
+}
+
+function saveGrowthLevelName(form) {
+  const data = Object.fromEntries(new FormData(form));
+  const level = Math.min(MAX_GROWTH_LEVEL, Math.max(1, Number(data.level || 1)));
+  const name = data.name.trim();
+  if (!name) return toast("請輸入等級名稱");
+  state.settings.growthLevelNames = { ...(state.settings.growthLevelNames || {}), [level]: name };
+  saveState();
+  growthLevelOptions($("#growthLevelSelect"));
+  $("#growthLevelSelect").value = String(level);
+  toast(`Lv.${level} 名稱已儲存`);
   renderAll();
 }
 
@@ -2312,7 +2361,7 @@ function reportContent(view) {
       ...(state.partnerBonuses || []).map((p) => ["合夥人紅利", staffName(p.staffId), p.gender || staffGender(p.staffId), money(p.netProfit), `${number(p.bonusRate)}%`, money(p.bonusAmount)]),
     ]),
     intl: () => reportTable(["流水編號", "DATE", "Company", "FROM", "PRODUCT", "N.W(KG)", "Amount"], (state.tradeDocs || []).map((doc) => { const totals = tradeTotals(doc.lines || []); return [doc.no, doc.date, doc.company, doc.from, doc.product, number(totals.nw), number(totals.amount)]; })),
-    growth: () => reportTable(["日期", "人員", "類別", "經驗值", "說明"], (state.growthRecords || []).map((p) => [p.date, staffName(p.staffId), p.category, `+${number(p.xp)} EXP`, p.note])),
+    growth: () => reportTable(["日期", "人員", "類別", "經驗值", "說明"], (state.growthRecords || []).map((p) => [p.date, staffName(p.staffId), p.category, `${Number(p.xp) > 0 ? "+" : ""}${number(p.xp)} EXP`, p.note])),
     settings: () => reportTable(["職位名稱"], (state.settings?.positions || []).map((name) => [name])),
   };
 
@@ -2500,6 +2549,7 @@ function bindEvents() {
   $("#sellProductForm").elements.productQty.addEventListener("input", updatePackageCount);
   $("#sellProductForm").elements.packSize.addEventListener("input", updatePackageCount);
   $("#productImageInput").addEventListener("change", handleProductImage);
+  $("#staffAvatarInput").addEventListener("change", (event) => handleImageUpload(event, "staffForm", "staffAvatarPreview"));
   $("#sampleImageInput").addEventListener("change", (event) => handleImageUpload(event, "sampleForm", "sampleImagePreview"));
   $("#liveSaleRevenue").addEventListener("input", updateLiveSaleNet);
   $("#liveSaleRefund").addEventListener("input", updateLiveSaleNet);
@@ -2638,6 +2688,13 @@ function bindEvents() {
     event.preventDefault();
     addGrowthRecord(event.currentTarget);
   });
+  $("#growthLevelForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    saveGrowthLevelName(event.currentTarget);
+  });
+  $("#growthLevelSelect").addEventListener("change", (event) => {
+    $("#growthLevelForm").elements.name.value = growthLevelName(Number(event.target.value));
+  });
   $("#adminPayrollForm").addEventListener("submit", (event) => {
     event.preventDefault();
     addAdminPayroll(event.currentTarget);
@@ -2719,6 +2776,7 @@ async function init() {
   resetForm($("#purchaseRequestForm"));
   resetForm($("#proposalForm"));
   resetForm($("#growthForm"));
+  resetForm($("#growthLevelForm"));
   resetForm($("#adminPayrollForm"));
   resetForm($("#livePayrollForm"));
   resetForm($("#partnerBonusForm"));

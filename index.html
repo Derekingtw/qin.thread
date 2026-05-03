@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-09" />
+    <link rel="stylesheet" href="styles.css?v=20260503-10" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -562,6 +562,9 @@
             <h2>人事資料</h2>
             <input type="hidden" name="id" />
             <input type="hidden" name="employeeType" id="staffEmployeeType" value="regular" />
+            <input type="hidden" name="avatarData" />
+            <label>自訂頭像<input name="avatarFile" id="staffAvatarInput" type="file" accept="image/*" /></label>
+            <div class="image-preview avatar-preview" id="staffAvatarPreview">尚未選擇頭像</div>
             <label>員工編號<input required name="code" placeholder="P001" /></label>
             <label>姓名<input required name="name" /></label>
             <label>性別<select name="gender"><option>女</option><option>男</option><option>其他</option></select></label>
@@ -855,10 +858,16 @@
             <h2>養成紀錄</h2>
             <label>人員<select required name="staffId" id="growthStaff"></select></label>
             <label>養成類別<select name="category"><option>任務完成</option><option>技能提升</option><option>直播表現</option><option>銷售成果</option><option>準時交付</option><option>管理貢獻</option></select></label>
-            <label>經驗值<input required name="xp" type="number" min="1" step="1" value="10" /></label>
+            <label>經驗值<input required name="xp" type="number" step="1" value="10" placeholder="可輸入正數或負數" /></label>
             <label>紀錄日期<input required name="date" type="date" /></label>
             <label>說明<input name="note" placeholder="例如：完成新人訓練、直播成交達標、準時交付樣衣" /></label>
             <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增紀錄</span></button>
+          </form>
+          <form class="editor" id="growthLevelForm">
+            <h2>等級名稱設定</h2>
+            <label>等級<select required name="level" id="growthLevelSelect"></select></label>
+            <label>等級名稱<input required name="name" placeholder="例如：青銅織手、核心主管" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存名稱</span></button>
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2>人員成長檔案</h2><span id="growthProfileCount" class="pill">0 人</span></div>
@@ -905,6 +914,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260503-13"></script>
+    <script src="app.js?v=20260503-14"></script>
   </body>
 </html>
