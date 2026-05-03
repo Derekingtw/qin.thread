@@ -1652,6 +1652,28 @@ tr:last-child td { border-bottom: 0; }
   table {
     min-width: 860px;
   }
+  #dashboard .table-wrap {
+    overflow-x: visible;
+  }
+  #dashboard table {
+    min-width: 0;
+    table-layout: fixed;
+  }
+  #dashboard th,
+  #dashboard td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    padding: 11px 6px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  #dashboard th {
+    font-size: 12px;
+  }
+  #dashboard .empty {
+    text-align: center;
+  }
 }
 
 @media print {
