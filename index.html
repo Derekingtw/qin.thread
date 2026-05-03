@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-04" />
+    <link rel="stylesheet" href="styles.css?v=20260503-05" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -778,7 +778,13 @@
             <label>Deposit USD<input name="deposit" type="number" min="0" step="0.01" value="0" /></label>
             <label class="auto-label">Total Value USD<span>自動生成</span><input readonly name="totalValue" id="tradeTotalValue" placeholder="自動生成" /></label>
             <div class="trade-lines">
-              <strong>商品明細</strong>
+              <div class="trade-lines-head">
+                <strong>商品明細</strong>
+                <div>
+                  <button class="ghost-light-btn" id="addTradeLineBtn" type="button"><i data-lucide="plus"></i><span>新增 1 列</span></button>
+                  <button class="ghost-light-btn" id="addTenTradeLinesBtn" type="button"><i data-lucide="list-plus"></i><span>新增 10 列</span></button>
+                </div>
+              </div>
               <div class="trade-line-head"><span>Yarn No.</span><span>Count</span><span>Composition</span><span>Color</span><span>N.W(KG)</span><span>G.W(KG)</span><span>Unit Price</span><span>Packages</span></div>
               <div id="tradeLineInputs"></div>
             </div>

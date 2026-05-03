@@ -71,6 +71,7 @@ let knitterTab = "profiles";
 let approvalTab = "overview";
 let payrollTab = "admin";
 let intlTab = "invoice";
+let tradeLineDrafts = [];
 let currentUser = null;
 
 function loadState() {
@@ -1137,6 +1138,10 @@ function tradeTotals(lines = []) {
 
 function tradeLinesFromForm(form) {
   const formData = new FormData(form);
+  return tradeLineValuesFromForm(formData).filter((line) => line.yarnNo || line.count || line.composition || line.color || line.nw || line.gw || line.unitPrice || line.packages);
+}
+
+function tradeLineValuesFromForm(formData = new FormData($("#tradeForm"))) {
   return formData.getAll("yarnNo").map((_, index) => ({
     yarnNo: formData.getAll("yarnNo")[index]?.trim() || "",
     count: formData.getAll("count")[index]?.trim() || "",
@@ -1146,7 +1151,7 @@ function tradeLinesFromForm(form) {
     gw: Number(formData.getAll("gw")[index] || 0),
     unitPrice: Number(formData.getAll("unitPrice")[index] || 0),
     packages: Number(formData.getAll("packages")[index] || 0),
-  })).filter((line) => line.yarnNo || line.count || line.composition || line.color || line.nw || line.gw || line.unitPrice || line.packages);
+  }));
 }
 
 function updateTradeAutoFields() {
@@ -1157,9 +1162,11 @@ function updateTradeAutoFields() {
   form.elements.totalValue.value = Math.max(0, totals.amount - deposit).toFixed(2);
 }
 
-function renderTradeLineInputs(lines = []) {
-  const rows = Array.from({ length: 10 }, (_, index) => lines[index] || {});
-  $("#tradeLineInputs").innerHTML = rows.map((line) => `<div class="trade-line-row">
+function renderTradeLineInputs(lines = [], minRows = 5) {
+  const rowCount = Math.max(lines.length, minRows);
+  tradeLineDrafts = Array.from({ length: rowCount }, (_, index) => lines[index] || {});
+  $("#tradeLineInputs").innerHTML = tradeLineDrafts.map((line, index) => `<div class="trade-line-row" data-trade-line="${index}">
+    <span class="trade-line-no">${index + 1}</span>
     <input name="yarnNo" value="${escapeHtml(line.yarnNo || "")}" placeholder="H-28956" />
     <input name="count" value="${escapeHtml(line.count || "")}" placeholder="35MM" />
     <input name="composition" value="${escapeHtml(line.composition || "")}" placeholder="VISCOSE100%" />
@@ -1168,8 +1175,24 @@ function renderTradeLineInputs(lines = []) {
     <input name="gw" type="number" min="0" step="0.01" value="${line.gw || ""}" />
     <input name="unitPrice" type="number" min="0" step="0.01" value="${line.unitPrice || ""}" />
     <input name="packages" type="number" min="0" step="1" value="${line.packages || ""}" />
+    <button class="small-btn delete" data-remove-trade-line="${index}" type="button" aria-label="刪除此列"><i data-lucide="trash-2"></i></button>
   </div>`).join("");
+  if (window.lucide) window.lucide.createIcons();
   updateTradeAutoFields();
+}
+
+function currentTradeLineDrafts() {
+  return tradeLineValuesFromForm(new FormData($("#tradeForm")));
+}
+
+function addTradeLines(count = 1) {
+  renderTradeLineInputs([...currentTradeLineDrafts(), ...Array.from({ length: count }, () => ({}))], 0);
+}
+
+function removeTradeLine(index) {
+  const rows = currentTradeLineDrafts();
+  rows.splice(index, 1);
+  renderTradeLineInputs(rows.length ? rows : [{}], 0);
 }
 
 function activeTradeDoc() {
@@ -1393,7 +1416,7 @@ function resetForm(form) {
     form.elements.from.value = "TAIWAN";
     form.elements.product.value = "YARN";
     form.elements.transaction.value = "T/T";
-    renderTradeLineInputs();
+    renderTradeLineInputs([], 5);
     updateTradeAutoFields();
   }
 }
@@ -1997,7 +2020,7 @@ function editItem(type, id) {
   if (type === "tradeDoc") {
     const doc = state.tradeDocs.find((item) => item.id === id);
     fillForm($("#tradeForm"), doc);
-    renderTradeLineInputs(doc?.lines || []);
+  renderTradeLineInputs(doc?.lines || [], 5);
     setView("intl");
   }
 }
@@ -2303,6 +2326,12 @@ function bindEvents() {
   $("#liveSaleRevenue").addEventListener("input", updateLiveSaleNet);
   $("#liveSaleRefund").addEventListener("input", updateLiveSaleNet);
   $("#tradeForm").addEventListener("input", updateTradeAutoFields);
+  $("#addTradeLineBtn").addEventListener("click", () => addTradeLines(1));
+  $("#addTenTradeLinesBtn").addEventListener("click", () => addTradeLines(10));
+  $("#tradeLineInputs").addEventListener("click", (event) => {
+    const remove = event.target.closest("[data-remove-trade-line]");
+    if (remove) removeTradeLine(Number(remove.dataset.removeTradeLine));
+  });
   ["adminPayrollForm", "livePayrollForm", "partnerBonusForm"].forEach((formId) => {
     const form = $(`#${formId}`);
     form.addEventListener("input", () => {
