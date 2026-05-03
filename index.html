@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-07" />
+    <link rel="stylesheet" href="styles.css?v=20260503-08" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -41,13 +41,8 @@
       </div>
       <nav class="nav" aria-label="主要導覽">
         <button class="nav-item active" data-view="dashboard"><i data-lucide="layout-dashboard"></i><span>總覽</span></button>
-        <button class="nav-item" data-view="products"><i data-lucide="package"></i><span>商品</span></button>
-        <button class="nav-item" data-view="inventory"><i data-lucide="warehouse"></i><span>庫存</span></button>
-        <button class="nav-item" data-view="purchases"><i data-lucide="truck"></i><span>進貨</span></button>
-        <button class="nav-item" data-view="sales"><i data-lucide="shopping-cart"></i><span>銷貨</span></button>
-        <button class="nav-item" data-view="shipping"><i data-lucide="clipboard-list"></i><span>出貨單</span></button>
-        <button class="nav-item" data-view="liveSales"><i data-lucide="badge-dollar-sign"></i><span>直播間銷售</span></button>
-        <button class="nav-item" data-view="live"><i data-lucide="radio"></i><span>直播對應</span></button>
+        <button class="nav-item" data-view="products"><i data-lucide="blocks"></i><span>ERP系統</span></button>
+        <button class="nav-item" data-view="live"><i data-lucide="radio"></i><span>直播系統</span></button>
         <button class="nav-item" data-view="knitters"><i data-lucide="shirt"></i><span>織女系統</span></button>
         <button class="nav-item" data-view="partners"><i data-lucide="users"></i><span>往來單位</span></button>
         <button class="nav-item" data-view="staff"><i data-lucide="id-card"></i><span>人事資料</span></button>
@@ -179,6 +174,13 @@
       </section>
 
       <section class="view" id="products">
+        <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
+          <button class="section-tab active" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab" data-system-tab="inventory" type="button">庫存</button>
+          <button class="section-tab" data-system-tab="purchases" type="button">進貨</button>
+          <button class="section-tab" data-system-tab="sales" type="button">銷貨</button>
+          <button class="section-tab" data-system-tab="shipping" type="button">出貨單</button>
+        </div>
         <div class="section-tabs" role="tablist" aria-label="商品分類">
           <button class="section-tab active" data-product-tab="saleGoods" type="button">銷售產品</button>
           <button class="section-tab" data-product-tab="officeGoods" type="button">一般產品</button>
@@ -276,6 +278,13 @@
       </section>
 
       <section class="view" id="purchases">
+        <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
+          <button class="section-tab" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab" data-system-tab="inventory" type="button">庫存</button>
+          <button class="section-tab active" data-system-tab="purchases" type="button">進貨</button>
+          <button class="section-tab" data-system-tab="sales" type="button">銷貨</button>
+          <button class="section-tab" data-system-tab="shipping" type="button">出貨單</button>
+        </div>
         <div class="workspace">
           <form class="editor" id="purchaseForm">
             <h2>進貨單</h2>
@@ -303,6 +312,13 @@
       </section>
 
       <section class="view" id="sales">
+        <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
+          <button class="section-tab" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab" data-system-tab="inventory" type="button">庫存</button>
+          <button class="section-tab" data-system-tab="purchases" type="button">進貨</button>
+          <button class="section-tab active" data-system-tab="sales" type="button">銷貨</button>
+          <button class="section-tab" data-system-tab="shipping" type="button">出貨單</button>
+        </div>
         <div class="workspace">
           <form class="editor" id="saleForm">
             <h2>銷貨單</h2>
@@ -330,6 +346,13 @@
       </section>
 
       <section class="view" id="inventory">
+        <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
+          <button class="section-tab" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab active" data-system-tab="inventory" type="button">庫存</button>
+          <button class="section-tab" data-system-tab="purchases" type="button">進貨</button>
+          <button class="section-tab" data-system-tab="sales" type="button">銷貨</button>
+          <button class="section-tab" data-system-tab="shipping" type="button">出貨單</button>
+        </div>
         <section class="panel">
           <div class="panel-head">
             <h2>庫存明細</h2>
@@ -379,6 +402,10 @@
       </section>
 
       <section class="view" id="live">
+        <div class="section-tabs system-tabs" role="tablist" aria-label="直播系統分類">
+          <button class="section-tab active" data-system-tab="live" type="button">直播對應</button>
+          <button class="section-tab" data-system-tab="liveSales" type="button">直播間銷售</button>
+        </div>
         <div class="workspace">
           <form class="editor" id="liveForm">
             <h2>直播對應</h2>
@@ -403,6 +430,13 @@
       </section>
 
       <section class="view" id="shipping">
+        <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
+          <button class="section-tab" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab" data-system-tab="inventory" type="button">庫存</button>
+          <button class="section-tab" data-system-tab="purchases" type="button">進貨</button>
+          <button class="section-tab" data-system-tab="sales" type="button">銷貨</button>
+          <button class="section-tab active" data-system-tab="shipping" type="button">出貨單</button>
+        </div>
         <div class="workspace">
           <form class="editor" id="shipmentForm">
             <h2>出貨單</h2>
@@ -428,6 +462,10 @@
       </section>
 
       <section class="view" id="liveSales">
+        <div class="section-tabs system-tabs" role="tablist" aria-label="直播系統分類">
+          <button class="section-tab" data-system-tab="live" type="button">直播對應</button>
+          <button class="section-tab active" data-system-tab="liveSales" type="button">直播間銷售</button>
+        </div>
         <div class="workspace">
           <form class="editor" id="liveSaleForm">
             <h2>直播間銷售</h2>
@@ -800,7 +838,7 @@
           </section>
         </div>
         <section class="panel wide trade-preview-panel intl-panel" data-intl-preview>
-          <div class="panel-head"><h2 id="tradePreviewTitle">COMMERCIAL INVOICE</h2><button class="ghost-light-btn" id="printTradeBtn" type="button"><i data-lucide="printer"></i><span>列印</span></button></div>
+          <div class="panel-head"><h2 id="tradePreviewTitle">COMMERCIAL INVOICE</h2><div class="row-actions"><button class="ghost-light-btn" id="downloadTradeWordBtn" type="button"><i data-lucide="file-down"></i><span>下載WORD</span></button><button class="ghost-light-btn" id="printTradeBtn" type="button"><i data-lucide="printer"></i><span>列印</span></button></div></div>
           <div id="tradePreview" class="trade-sheet"></div>
         </section>
       </section>
@@ -839,6 +877,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260502-11"></script>
+    <script src="app.js?v=20260503-12"></script>
   </body>
 </html>

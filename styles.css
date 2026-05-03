@@ -882,6 +882,7 @@ input[type="file"] {
 
 .trade-document {
   min-width: 980px;
+  box-sizing: border-box;
   padding: 18px;
   background: #fff;
   color: #000;
@@ -944,8 +945,10 @@ input[type="file"] {
 }
 
 .trade-doc-table {
+  width: 100%;
   min-width: 0;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .trade-doc-table th {
@@ -960,6 +963,8 @@ input[type="file"] {
   border: 1px solid #000;
   padding: 5px 8px;
   text-align: center;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .trade-document.packing .trade-doc-table tbody td {
@@ -1325,6 +1330,11 @@ tr:last-child td { border-bottom: 0; }
 }
 
 @media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
   body:has(#intl.active) .sidebar,
   body:has(#intl.active) .topbar,
   body:has(#intl.active) .section-tabs,
@@ -1341,10 +1351,52 @@ tr:last-child td { border-bottom: 0; }
     border: 0;
     box-shadow: none;
     padding: 0;
+    background: #fff;
+  }
+  body:has(#intl.active) .trade-sheet {
+    overflow: visible;
   }
   body:has(#intl.active) .trade-document {
     min-width: 0;
     width: 100%;
     padding: 0;
+    font-size: 10px;
+  }
+  body:has(#intl.active) .trade-doc-title {
+    padding: 8px;
+    font-size: 24px;
+  }
+  body:has(#intl.active) .trade-info-grid {
+    gap: 12px;
+    margin: 10px 0 14px;
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  body:has(#intl.active) .trade-box h3 {
+    font-size: 14px;
+  }
+  body:has(#intl.active) .trade-box p {
+    grid-template-columns: 72px 1fr;
+  }
+  body:has(#intl.active) .trade-box b,
+  body:has(#intl.active) .trade-box span {
+    padding: 2px;
+  }
+  body:has(#intl.active) .trade-box.mark pre {
+    min-height: 58px;
+    padding: 4px;
+  }
+  body:has(#intl.active) .trade-doc-table {
+    width: 100%;
+    table-layout: fixed;
+  }
+  body:has(#intl.active) .trade-doc-table td,
+  body:has(#intl.active) .trade-doc-table th {
+    padding: 3px 2px;
+    font-size: 9px;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+  body:has(#intl.active) .auto-note {
+    display: none;
   }
 }

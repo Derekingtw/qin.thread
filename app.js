@@ -1,6 +1,8 @@
 const STORAGE_KEY = "oa_inventory_state_v1";
 const SESSION_KEY = "oa_inventory_session_v1";
 const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "contracts", "leave", "approvals", "payroll", "intl", "tracking", "production", "settings"];
+const ERP_VIEWS = ["products", "inventory", "purchases", "sales", "shipping"];
+const LIVE_SYSTEM_VIEWS = ["live", "liveSales"];
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -200,6 +202,7 @@ function normalizeState(saved) {
   next.partnerBonuses = (next.partnerBonuses || []).map((item) => ({ ...item, netProfit: Number(item.netProfit || 0), bonusRate: Number(item.bonusRate || 0), bonusAmount: Number(item.bonusAmount || 0) }));
   next.tradeDocs = (next.tradeDocs || []).map((doc) => ({
     ...doc,
+    no: normalizeTradeNo(doc.no),
     lines: (doc.lines || []).map((line) => ({
       ...line,
       nw: Number(line.nw || 0),
@@ -235,6 +238,12 @@ function permissionsForStaffRole(role) {
     return ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "leave", "approvals", "payroll", "intl", "tracking", "production"];
   }
   return ["dashboard", "products", "inventory", "sales", "liveSales", "leave"];
+}
+
+function navViewFor(view) {
+  if (ERP_VIEWS.includes(view)) return "products";
+  if (LIVE_SYSTEM_VIEWS.includes(view)) return "live";
+  return view;
 }
 
 function accountRoleForStaffRole(role) {
@@ -1015,6 +1024,8 @@ function renderSettings() {
 }
 
 function viewLabel(view) {
+  if (ERP_VIEWS.includes(view)) return "ERP系統";
+  if (LIVE_SYSTEM_VIEWS.includes(view)) return "直播系統";
   return $(`.nav-item[data-view="${view}"] span`)?.textContent || view;
 }
 
@@ -1116,12 +1127,17 @@ function renderPayroll() {
 
 function tradePrefix() {
   const now = new Date();
-  return `MIT-${String(now.getFullYear()).slice(-2)}-${String(now.getMonth() + 1).padStart(2, "0")}-`;
+  return `MIT-${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, "0")}-`;
+}
+
+function normalizeTradeNo(no = "") {
+  return String(no || "").replace(/^MIT-(\d{2})-(\d{2})-(\d{3})$/, "MIT-$1$2-$3");
 }
 
 function generateTradeNo(existingId = "") {
   const prefix = tradePrefix();
   const maxSeq = (state.tradeDocs || [])
+    .map((doc) => ({ ...doc, no: normalizeTradeNo(doc.no) }))
     .filter((doc) => doc.id !== existingId && doc.no?.startsWith(prefix))
     .map((doc) => Number(doc.no.slice(prefix.length)))
     .filter(Number.isFinite)
@@ -1208,14 +1224,14 @@ function tradeCell(value) {
 
 function renderTradeSheet(doc, mode = intlTab) {
   if (!doc) return `<p class="empty">尚無國貿單據</p>`;
-  const lines = Array.from({ length: 20 }, (_, index) => doc.lines?.[index] || {});
+  const lines = Array.from({ length: Math.max(20, doc.lines?.length || 0) }, (_, index) => doc.lines?.[index] || {});
   const totals = tradeTotals(doc.lines || []);
   const isPacking = mode === "packing";
   const title = isPacking ? "COMMERCIAL PACKING" : "COMMERCIAL INVOICE";
   $("#tradePreviewTitle").textContent = title;
   return `<div class="trade-document ${isPacking ? "packing" : ""}">
     <div class="trade-doc-title">${title}</div>
-    <div class="trade-doc-meta">NO: ${tradeCell(doc.no)}</div>
+    <div class="trade-doc-meta">NO: ${tradeCell(normalizeTradeNo(doc.no))}</div>
     <div class="trade-info-grid">
       <div class="trade-box buyer">
         <h3>${isPacking ? "BUYER (Linked from Invoice)" : "BUYER INFORMATION"}</h3>
@@ -1253,10 +1269,65 @@ function renderIntl() {
   $("#tradeDocCount").textContent = `${docs.length} 筆`;
   $("#tradeDocRows").innerHTML = docs.map((doc) => {
     const totals = tradeTotals(doc.lines || []);
-    return `<tr><td>${doc.no}</td><td>${doc.date || "-"}</td><td>${doc.company || "-"}</td><td>${doc.from || "-"}</td><td>${doc.product || "-"}</td><td class="num">${number(totals.nw)}</td><td class="num">${number(totals.amount)}</td><td>${rowActions("tradeDoc", doc.id, true)}</td></tr>`;
+    return `<tr><td>${normalizeTradeNo(doc.no)}</td><td>${doc.date || "-"}</td><td>${doc.company || "-"}</td><td>${doc.from || "-"}</td><td>${doc.product || "-"}</td><td class="num">${number(totals.nw)}</td><td class="num">${number(totals.amount)}</td><td>${rowActions("tradeDoc", doc.id, true)}</td></tr>`;
   }).join("") || emptyRow(8);
   const previewMode = intlTab === "packing" ? "packing" : "invoice";
   $("#tradePreview").innerHTML = renderTradeSheet(activeTradeDoc() || docs[0], previewMode);
+}
+
+function tradeWordHtml(doc, mode) {
+  const title = mode === "packing" ? "COMMERCIAL PACKING" : "COMMERCIAL INVOICE";
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${title}</title>
+  <style>${tradeWordStyles()}</style>
+</head>
+<body>${renderTradeSheet(doc, mode)}</body>
+</html>`;
+}
+
+function tradeWordStyles() {
+  return `
+    body { margin: 0; font-family: "Courier New", "Microsoft JhengHei", monospace; color: #000; }
+    .trade-document { width: 100%; box-sizing: border-box; padding: 10mm; font-weight: 700; }
+    .trade-doc-title { padding: 12px; background: #1f527c; color: #fff; text-align: center; font-size: 22pt; letter-spacing: 1px; }
+    .trade-doc-meta { padding: 8px 0; text-align: right; color: #1f527c; }
+    .trade-info-grid { display: table; width: 100%; table-layout: fixed; margin: 10px 0 18px; }
+    .trade-box { display: table-cell; width: 33.33%; padding: 0 6px; vertical-align: top; }
+    .trade-box h3 { margin: 0 0 6px; padding: 6px; text-align: center; background: #bed8ee; font-size: 14pt; }
+    .trade-box.traffic h3 { background: #d9d3b8; }
+    .trade-box.mark h3 { background: #dfd9e9; }
+    .trade-box.mark pre { min-height: 70px; margin: 0; padding: 8px; background: #ffe79d; text-align: center; white-space: pre-wrap; font: inherit; }
+    .trade-box p { margin: 0; }
+    .trade-box b { display: inline-block; width: 34%; padding: 3px; box-sizing: border-box; background: #f4f4f4; }
+    .trade-box span { display: inline-block; width: 64%; padding: 3px; box-sizing: border-box; background: #f4f4f4; word-break: break-word; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid #000; padding: 4px; text-align: center; font-size: 9pt; word-break: break-word; }
+    th { background: #1f527c; color: #fff; }
+    tfoot td { font-weight: 900; }
+    .auto-note { display: none; }
+    .trade-summary-boxes { display: table; margin-top: 14px; }
+    .trade-summary-boxes div { display: table-cell; min-width: 180px; padding: 8px 20px 8px 0; }
+  `;
+}
+
+function downloadTradeWord() {
+  const doc = activeTradeDoc();
+  if (!doc) return toast("請先建立國貿單據");
+  const mode = intlTab === "packing" ? "packing" : "invoice";
+  const title = mode === "packing" ? "PACKING" : "INVOICE";
+  const html = tradeWordHtml(doc, mode);
+  const blob = new Blob(["\ufeff", html], { type: "application/msword;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${normalizeTradeNo(doc.no)}_${title}.doc`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function renderAll() {
@@ -1290,9 +1361,9 @@ function setView(view) {
   }
   activeView = view;
   $$(".view").forEach((el) => el.classList.toggle("active", el.id === view));
-  $$(".nav-item").forEach((el) => el.classList.toggle("active", el.dataset.view === view));
-  const label = $(`.nav-item[data-view="${view}"] span`)?.textContent || "總覽";
-  $("#viewTitle").textContent = label;
+  $$(".nav-item").forEach((el) => el.classList.toggle("active", el.dataset.view === navViewFor(view)));
+  $$("[data-system-tab]").forEach((el) => el.classList.toggle("active", el.dataset.systemTab === view));
+  $("#viewTitle").textContent = viewLabel(view);
 }
 
 function setProductTab(tab) {
@@ -1857,7 +1928,7 @@ function addTradeDoc(form) {
   const totals = tradeTotals(lines);
   const doc = {
     id: data.id || uid("trade"),
-    no: data.no || generateTradeNo(data.id),
+    no: normalizeTradeNo(data.no || generateTradeNo(data.id)),
     date: data.date,
     company: data.company.trim(),
     consignee: data.consignee.trim(),
@@ -2310,6 +2381,7 @@ function bindEvents() {
   $$("[data-approval-tab]").forEach((button) => button.addEventListener("click", () => setApprovalTab(button.dataset.approvalTab)));
   $$("[data-payroll-tab]").forEach((button) => button.addEventListener("click", () => setPayrollTab(button.dataset.payrollTab)));
   $$("[data-intl-tab]").forEach((button) => button.addEventListener("click", () => setIntlTab(button.dataset.intlTab)));
+  $$("[data-system-tab]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.systemTab)));
   $$("[data-setting-tab]").forEach((button) => button.addEventListener("click", () => setSettingTab(button.dataset.settingTab)));
   $$("[data-staff-tab]").forEach((button) => button.addEventListener("click", () => setStaffTab(button.dataset.staffTab)));
   $$("[data-auth-tab]").forEach((button) => button.addEventListener("click", () => setAuthTab(button.dataset.authTab)));
@@ -2409,6 +2481,7 @@ function bindEvents() {
     addTradeDoc(event.currentTarget);
   });
   $("#printTradeBtn").addEventListener("click", () => window.print());
+  $("#downloadTradeWordBtn").addEventListener("click", downloadTradeWord);
   $("#knitterForm").addEventListener("submit", (event) => {
     event.preventDefault();
     addKnitter(event.currentTarget);
