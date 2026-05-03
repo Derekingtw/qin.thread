@@ -204,6 +204,10 @@ function normalizeState(saved) {
   next.purchaseRequests = (next.purchaseRequests || []).map((item) => ({ ...item, qty: Number(item.qty || 1), amount: Number(item.amount || 0), status: item.status || "待審批" }));
   next.proposalRequests = (next.proposalRequests || []).map((item) => ({ ...item, status: item.status || "待審批" }));
   next.staff = (next.staff || []).map((item) => ({ ...item, gender: item.gender || "女", role: normalizeStaffRole(item.role), avatarData: item.avatarData || "" }));
+  const staffIds = new Set((next.staff || []).map((item) => item.id).filter(Boolean));
+  if (staffIds.size) {
+    next.settings.users = (next.settings.users || []).filter((user) => !user.staffId || staffIds.has(user.staffId));
+  }
   next.adminPayrolls = (next.adminPayrolls || []).map((item) => ({ ...item, ...payrollNumbers(item) }));
   next.livePayrolls = (next.livePayrolls || []).map((item) => ({ ...item, ...payrollNumbers(item), commission: Number(item.commission || 0), netRevenue: Number(item.netRevenue || 0) }));
   next.partnerBonuses = (next.partnerBonuses || []).map((item) => ({ ...item, netProfit: Number(item.netProfit || 0), bonusRate: Number(item.bonusRate || 0), bonusAmount: Number(item.bonusAmount || 0) }));
@@ -563,6 +567,20 @@ function staffName(id, fallback = "-") {
 
 function staffById(id) {
   return (state.staff || []).find((item) => item.id === id);
+}
+
+function pruneUserAccountsForDeletedStaff(staffId, staffPhone = "") {
+  const phone = normalizePhone(staffPhone);
+  const users = state.settings?.users || [];
+  state.settings.users = users.filter((user) => {
+    const sameStaff = staffId && user.staffId === staffId;
+    const samePhone = phone && normalizePhone(user.phone || user.username || "") === phone;
+    return !sameStaff && !samePhone;
+  });
+  if (currentUser?.id && !state.settings.users.some((user) => user.id === currentUser.id)) {
+    localStorage.removeItem(SESSION_KEY);
+    currentUser = null;
+  }
 }
 
 function avatarMarkup(staff, size = "md") {
@@ -1102,7 +1120,7 @@ function renderSettings() {
     <td>${name}</td>
     <td>${rowActions("position", name, true)}</td>
   </tr>`).join("") || emptyRow(2);
-  const users = state.settings.users || [];
+  const users = (state.settings.users || []).filter((user) => !user.staffId || staffById(user.staffId));
   $("#permissionCount").textContent = `${users.length} 人`;
   $("#permissionRows").innerHTML = users.map((user) => `
     <article class="permission-card">
@@ -1908,10 +1926,16 @@ function deleteItem(type, id) {
       : false;
   if (hasDoc) return toast("已有單據使用，請保留資料");
   const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs", growthRecord: "growthRecords" };
+  if (type === "staff") {
+    const staff = (state.staff || []).find((item) => item.id === id);
+    pruneUserAccountsForDeletedStaff(id, staff?.phone);
+    state.growthRecords = (state.growthRecords || []).filter((record) => record.staffId !== id);
+    if (editingStaffId === id) editingStaffId = "";
+  }
   state[map[type]] = state[map[type]].filter((item) => item.id !== id);
   if (type === "tradeDoc" && activeTradeDocId === id) activeTradeDocId = "";
   saveState();
-  toast("資料已刪除");
+  toast(type === "staff" ? "人事資料與系統權限已刪除" : "資料已刪除");
   renderAll();
 }
 
