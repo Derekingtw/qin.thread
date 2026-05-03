@@ -1844,6 +1844,15 @@ function saveAppearanceSettings(form) {
   toast("外觀設定已儲存");
 }
 
+function updateBackgroundColor(value, persist = false) {
+  state.settings.appearance = {
+    ...(state.settings.appearance || {}),
+    backgroundColor: value || "#fffaf0",
+  };
+  applyAppearanceSettings();
+  if (persist) saveState();
+}
+
 function clearBackgroundImage() {
   state.settings.appearance = {
     ...(state.settings.appearance || {}),
@@ -2762,6 +2771,11 @@ function bindEvents() {
   $("#appearanceForm").addEventListener("submit", (event) => {
     event.preventDefault();
     saveAppearanceSettings(event.currentTarget);
+  });
+  $("#appearanceForm").elements.backgroundColor.addEventListener("input", (event) => updateBackgroundColor(event.target.value));
+  $("#appearanceForm").elements.backgroundColor.addEventListener("change", (event) => {
+    updateBackgroundColor(event.target.value, true);
+    toast("背景顏色已套用");
   });
   $("#clearBackgroundImageBtn").addEventListener("click", clearBackgroundImage);
   $("#liveSaleRevenue").addEventListener("input", updateLiveSaleNet);
