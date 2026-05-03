@@ -1601,34 +1601,36 @@ function drawPdfBox(pdf, x, y, w, h, title, rows, fill = [190, 216, 238]) {
 function drawTradePdfHeader(pdf, tradeDoc, mode) {
   const isPacking = mode === "packing";
   const title = isPacking ? "COMMERCIAL PACKING" : "COMMERCIAL INVOICE";
-  pdf.setFillColor(31, 82, 124);
-  pdf.rect(10, 8, 277, 14, "F");
   pdf.setFont("courier", "bold");
-  pdf.setTextColor(255, 255, 255);
+  pdf.setDrawColor(31, 82, 124);
+  pdf.setLineWidth(0.5);
+  pdf.line(10, 10, 287, 10);
+  pdf.line(10, 25, 287, 25);
+  pdf.setTextColor(31, 82, 124);
   pdf.setFontSize(20);
-  pdf.text(title, 148.5, 18, { align: "center" });
+  pdf.text(title, 148.5, 20, { align: "center" });
   pdf.setTextColor(31, 82, 124);
   pdf.setFontSize(11);
-  pdf.text(`NO: ${normalizeTradeNo(tradeDoc.no)}`, 285, 30, { align: "right" });
-  drawPdfBox(pdf, 10, 34, 86, 48, isPacking ? "BUYER (Linked from Invoice)" : "BUYER INFORMATION", [
+  pdf.text(`NO: ${normalizeTradeNo(tradeDoc.no)}`, 285, 32, { align: "right" });
+  drawPdfBox(pdf, 10, 36, 86, 48, isPacking ? "BUYER (Linked from Invoice)" : "BUYER INFORMATION", [
     ["Company:", tradeDoc.company],
     ["Consignee:", tradeDoc.consignee],
     ["Phone:", tradeDoc.phone],
     ["Address:", tradeDoc.address],
   ], [190, 216, 238]);
-  drawPdfBox(pdf, 106, 34, 82, 48, "Traffic information", [
+  drawPdfBox(pdf, 106, 36, 82, 48, "Traffic information", [
     ["DATE:", String(tradeDoc.date || "").replaceAll("-", "/")],
     ["FROM:", tradeDoc.from],
     ["PRODUCT:", tradeDoc.product],
     ["TRANS:", tradeDoc.transaction],
   ], [217, 211, 184]);
-  drawPdfBox(pdf, 198, 34, 89, 48, "Shipping Mark:", [], [223, 217, 233]);
+  drawPdfBox(pdf, 198, 36, 89, 48, "Shipping Mark:", [], [223, 217, 233]);
   pdf.setFillColor(255, 231, 157);
-  pdf.rect(198, 43, 89, 39, "F");
+  pdf.rect(198, 45, 89, 39, "F");
   pdf.setTextColor(0, 0, 0);
   pdf.setFont("courier", "bold");
   pdf.setFontSize(11);
-  pdf.text(pdf.splitTextToSize(String(tradeDoc.shippingMark || ""), 76), 242.5, 52, { align: "center" });
+  pdf.text(pdf.splitTextToSize(String(tradeDoc.shippingMark || ""), 76), 242.5, 54, { align: "center" });
 }
 
 function drawTradePdfTable(pdf, tradeDoc, mode) {
@@ -1642,13 +1644,14 @@ function drawTradePdfTable(pdf, tradeDoc, mode) {
     : [
       ["No.", 12], ["Yarn No.", 42], ["Count", 24], ["Composition", 70], ["Color", 28], ["N.W(KG)", 28], ["Unit Price", 30], ["Amount", 33],
     ];
-  let y = 90;
+  let y = 92;
   const x0 = 10;
   const rowH = 8;
   const header = () => {
     let x = x0;
-    pdf.setFillColor(31, 82, 124);
-    pdf.setTextColor(255, 255, 255);
+    pdf.setFillColor(218, 235, 247);
+    pdf.setDrawColor(31, 82, 124);
+    pdf.setTextColor(31, 82, 124);
     pdf.setFont("courier", "bold");
     pdf.setFontSize(9);
     columns.forEach(([name, width]) => {
@@ -1669,6 +1672,8 @@ function drawTradePdfTable(pdf, tradeDoc, mode) {
     }
     let x = x0;
     if (fill) pdf.setFillColor(...fill);
+    pdf.setDrawColor(31, 82, 124);
+    pdf.setTextColor(0, 0, 0);
     cells.forEach((cell, index) => {
       const width = columns[index][1];
       fill ? pdf.rect(x, y, width, rowH, "FD") : pdf.rect(x, y, width, rowH);
