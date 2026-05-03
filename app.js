@@ -1577,20 +1577,20 @@ function pdfText(doc, text, x, y, options = {}) {
   return y + (lines.length * 4.8);
 }
 
-function drawPdfBox(pdf, x, y, w, h, title, rows, fill = [190, 216, 238]) {
+function drawPdfBox(pdf, x, y, w, h, title, rows) {
   pdf.setDrawColor(31, 82, 124);
   pdf.setLineWidth(0.35);
   pdf.rect(x, y, w, h);
-  pdf.setFillColor(...fill);
-  pdf.rect(x, y, w, 9, "F");
+  pdf.line(x, y + 9, x + w, y + 9);
   pdf.setFont("courier", "bold");
   pdf.setFontSize(12);
-  pdf.setTextColor(0, 0, 0);
+  pdf.setTextColor(31, 82, 124);
   pdf.text(title, x + w / 2, y + 6.2, { align: "center" });
   let rowY = y + 15;
   pdf.setFontSize(9);
   rows.forEach(([label, value]) => {
     pdf.setFont("courier", "bold");
+    pdf.setTextColor(0, 0, 0);
     pdf.text(label, x + 3, rowY);
     pdf.setFont("courier", "normal");
     pdf.text(pdf.splitTextToSize(String(value || ""), w - 32), x + 30, rowY);
@@ -1617,16 +1617,14 @@ function drawTradePdfHeader(pdf, tradeDoc, mode) {
     ["Consignee:", tradeDoc.consignee],
     ["Phone:", tradeDoc.phone],
     ["Address:", tradeDoc.address],
-  ], [190, 216, 238]);
+  ]);
   drawPdfBox(pdf, 106, 36, 82, 48, "Traffic information", [
     ["DATE:", String(tradeDoc.date || "").replaceAll("-", "/")],
     ["FROM:", tradeDoc.from],
     ["PRODUCT:", tradeDoc.product],
     ["TRANS:", tradeDoc.transaction],
-  ], [217, 211, 184]);
-  drawPdfBox(pdf, 198, 36, 89, 48, "Shipping Mark:", [], [223, 217, 233]);
-  pdf.setFillColor(255, 231, 157);
-  pdf.rect(198, 45, 89, 39, "F");
+  ]);
+  drawPdfBox(pdf, 198, 36, 89, 48, "Shipping Mark:", []);
   pdf.setTextColor(0, 0, 0);
   pdf.setFont("courier", "bold");
   pdf.setFontSize(11);
@@ -1649,13 +1647,12 @@ function drawTradePdfTable(pdf, tradeDoc, mode) {
   const rowH = 8;
   const header = () => {
     let x = x0;
-    pdf.setFillColor(218, 235, 247);
     pdf.setDrawColor(31, 82, 124);
     pdf.setTextColor(31, 82, 124);
     pdf.setFont("courier", "bold");
     pdf.setFontSize(9);
     columns.forEach(([name, width]) => {
-      pdf.rect(x, y, width, rowH, "FD");
+      pdf.rect(x, y, width, rowH);
       pdf.text(name, x + width / 2, y + 5.4, { align: "center" });
       x += width;
     });
@@ -1664,19 +1661,18 @@ function drawTradePdfTable(pdf, tradeDoc, mode) {
   };
   header();
   pdf.setFontSize(8.5);
-  const drawRow = (cells, fill = null) => {
+  const drawRow = (cells) => {
     if (y > 190) {
       pdf.addPage();
       y = 16;
       header();
     }
     let x = x0;
-    if (fill) pdf.setFillColor(...fill);
     pdf.setDrawColor(31, 82, 124);
     pdf.setTextColor(0, 0, 0);
     cells.forEach((cell, index) => {
       const width = columns[index][1];
-      fill ? pdf.rect(x, y, width, rowH, "FD") : pdf.rect(x, y, width, rowH);
+      pdf.rect(x, y, width, rowH);
       pdf.text(pdf.splitTextToSize(String(cell || ""), width - 3), x + width / 2, y + 5.2, { align: "center" });
       x += width;
     });
@@ -1686,11 +1682,10 @@ function drawTradePdfTable(pdf, tradeDoc, mode) {
     const amount = Number(line.nw || 0) * Number(line.unitPrice || 0);
     drawRow(isPacking
       ? [index + 1, line.yarnNo, line.count, line.composition, line.color, number(line.nw || 0), number(line.gw || 0), line.packages ? number(line.packages) : ""]
-      : [index + 1, line.yarnNo, line.count, line.composition, line.color, number(line.nw || 0), line.unitPrice ? number(line.unitPrice) : "", amount ? number(amount) : "0"],
-      isPacking ? [255, 246, 216] : (index % 2 ? [248, 251, 251] : null)
+      : [index + 1, line.yarnNo, line.count, line.composition, line.color, number(line.nw || 0), line.unitPrice ? number(line.unitPrice) : "", amount ? number(amount) : "0"]
     );
   });
-  drawRow(isPacking ? ["", "", "", "", "TOTAL:", number(totals.nw), number(totals.gw), ""] : ["", "", "", "", "TOTAL:", number(totals.nw), "", number(totals.amount)], [233, 239, 223]);
+  drawRow(isPacking ? ["", "", "", "", "TOTAL:", number(totals.nw), number(totals.gw), ""] : ["", "", "", "", "TOTAL:", number(totals.nw), "", number(totals.amount)]);
   if (!isPacking) {
     y += 8;
     pdf.setFont("courier", "bold");
