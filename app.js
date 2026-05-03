@@ -1,7 +1,8 @@
 const STORAGE_KEY = "oa_inventory_state_v1";
 const SESSION_KEY = "oa_inventory_session_v1";
 const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "contracts", "leave", "approvals", "payroll", "intl", "tracking", "production", "growth", "settings"];
-const ERP_VIEWS = ["products", "partners", "inventory", "purchases", "sales", "shipping", "tracking", "production"];
+const ERP_VIEWS = ["products", "partners", "inventory", "purchases", "sales", "shipping", "tracking", "production", "contracts"];
+const ERP_TAB_LABELS = { products: "商品", partners: "往來單位", inventory: "庫存", purchases: "進貨", sales: "銷貨", shipping: "出貨單", tracking: "貨品追蹤", production: "生產圖", contracts: "合同" };
 const LIVE_SYSTEM_VIEWS = ["live", "liveSales"];
 
 const $ = (selector) => document.querySelector(selector);
@@ -12,6 +13,7 @@ const uid = (prefix) => `${prefix}-${Date.now().toString(36)}-${Math.random().to
 const money = (value) => Number(value || 0).toLocaleString("zh-TW", { style: "currency", currency: "TWD", maximumFractionDigits: 0 });
 const number = (value) => Number(value || 0).toLocaleString("zh-TW");
 const ceilNumber = (value) => Math.ceil(Number(value || 0));
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const normalizePhone = (value) => String(value || "").replace(/[^\d+]/g, "").trim();
 const phoneDigits = (value) => normalizePhone(value).replace(/\D/g, "");
 const staffRoleAliases = {
@@ -1104,6 +1106,22 @@ function viewLabel(view) {
   return $(`.nav-item[data-view="${view}"] span`)?.textContent || view;
 }
 
+function ensureErpTabs() {
+  $$(".system-tabs").forEach((tabs) => {
+    const hasErpButton = [...tabs.querySelectorAll("[data-system-tab]")].some((button) => ERP_VIEWS.includes(button.dataset.systemTab));
+    if (!hasErpButton) return;
+    ERP_VIEWS.forEach((view) => {
+      if (tabs.querySelector(`[data-system-tab="${view}"]`)) return;
+      const button = document.createElement("button");
+      button.className = "section-tab";
+      button.dataset.systemTab = view;
+      button.type = "button";
+      button.textContent = ERP_TAB_LABELS[view];
+      tabs.appendChild(button);
+    });
+  });
+}
+
 function renderGrowth() {
   const staffRows = currentRows(state.staff || []).filter((item) => item.status !== "離職");
   $("#growthProfileCount").textContent = `${staffRows.length} 人`;
@@ -1639,7 +1657,7 @@ function renderImagePreview(targetId, src) {
     : "尚未選擇圖片";
 }
 
-function handleImageUpload(event, formId, previewId) {
+function handleImageUpload(event, formId, previewId, fieldName = "imageData") {
   const file = event.target.files?.[0];
   const form = $(`#${formId}`);
   if (!file || !form) return;
@@ -1648,9 +1666,14 @@ function handleImageUpload(event, formId, previewId) {
     event.target.value = "";
     return;
   }
+  if (file.size > MAX_IMAGE_BYTES) {
+    toast("圖片不可超過 2MB");
+    event.target.value = "";
+    return;
+  }
   const reader = new FileReader();
   reader.onload = () => {
-    form.elements.imageData.value = reader.result;
+    form.elements[fieldName].value = reader.result;
     renderImagePreview(previewId, reader.result);
   };
   reader.readAsDataURL(file);
@@ -2526,6 +2549,7 @@ function seedData() {
 }
 
 function bindEvents() {
+  ensureErpTabs();
   $$(".nav-item").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   $$("[data-action='goto']").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   $$("[data-product-tab]").forEach((button) => button.addEventListener("click", () => setProductTab(button.dataset.productTab)));
@@ -2556,7 +2580,7 @@ function bindEvents() {
   $("#sellProductForm").elements.productQty.addEventListener("input", updatePackageCount);
   $("#sellProductForm").elements.packSize.addEventListener("input", updatePackageCount);
   $("#productImageInput").addEventListener("change", handleProductImage);
-  $("#staffAvatarInput").addEventListener("change", (event) => handleImageUpload(event, "staffForm", "staffAvatarPreview"));
+  $("#staffAvatarInput").addEventListener("change", (event) => handleImageUpload(event, "staffForm", "staffAvatarPreview", "avatarData"));
   $("#sampleImageInput").addEventListener("change", (event) => handleImageUpload(event, "sampleForm", "sampleImagePreview"));
   $("#liveSaleRevenue").addEventListener("input", updateLiveSaleNet);
   $("#liveSaleRefund").addEventListener("input", updateLiveSaleNet);

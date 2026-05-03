@@ -754,6 +754,14 @@ input[type="file"] {
   cursor: not-allowed;
 }
 
+.field-warning {
+  display: block;
+  margin-top: -8px;
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .staff-extra.active {
   display: grid;
   gap: 14px;
