@@ -902,15 +902,13 @@
         </div>
         <section class="panel wide trade-preview-panel intl-panel" data-intl-preview>
           <div class="panel-head trade-preview-head">
-            <div>
-              <h2 id="tradePreviewTitle">COMMERCIAL INVOICE</h2>
-              <label class="trade-doc-picker">瀏覽單據<select id="tradeDocSelect"></select></label>
-            </div>
+            <h2 id="tradePreviewTitle">COMMERCIAL INVOICE</h2>
             <div class="row-actions">
               <button class="ghost-light-btn" id="downloadTradeWordBtn" type="button"><i data-lucide="file-down"></i><span>下載 WORD</span></button>
               <button class="ghost-light-btn" id="downloadTradePdfBtn" type="button"><i data-lucide="file-type"></i><span>下載 PDF</span></button>
               <button class="ghost-light-btn" id="printTradeBtn" type="button"><i data-lucide="printer"></i><span>列印</span></button>
             </div>
+            <label class="trade-doc-picker"><span>瀏覽單據</span><select id="tradeDocSelect"></select></label>
           </div>
           <div id="tradePreview" class="trade-sheet"></div>
         </section>
@@ -993,6 +991,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260503-22"></script>
+    <script src="app.js?v=20260503-23"></script>
   </body>
 </html>

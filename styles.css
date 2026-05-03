@@ -907,6 +907,10 @@ input[type="file"] {
   vertical-align: middle;
 }
 
+.trade-document .auto-note {
+  display: none;
+}
+
 .trade-lines {
   display: grid;
   gap: 10px;
@@ -1122,22 +1126,36 @@ input[type="file"] {
 }
 
 .trade-preview-head {
-  align-items: flex-start;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  align-items: start;
+  gap: 12px 16px;
+}
+
+.trade-preview-head .row-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .trade-doc-picker {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 12px;
+  min-width: 0;
+  margin-top: 2px;
   color: #1f527c;
   font-size: 13px;
   font-weight: 900;
 }
 
+.trade-doc-picker span {
+  white-space: nowrap;
+}
+
 .trade-doc-picker select {
-  min-width: min(520px, 52vw);
+  width: min(780px, 100%);
+  min-width: 260px;
   height: 38px;
   background: #fff;
 }

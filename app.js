@@ -1486,9 +1486,9 @@ function renderTradeSheet(doc, mode = intlTab) {
       <thead><tr><th>No.</th><th>Yarn No.</th><th>Count</th><th>Composition</th><th>Color</th><th>N.W(KG)</th>${isPacking ? "<th>G.W(KG)</th><th>Packages</th>" : "<th>Unit Price</th><th>Amount</th>"}</tr></thead>
       <tbody>${lines.map((line, index) => {
         const amount = Number(line.nw || 0) * Number(line.unitPrice || 0);
-        return `<tr><td>${index + 1}</td><td>${tradeCell(line.yarnNo)}</td><td>${tradeCell(line.count)}</td><td>${tradeCell(line.composition)}</td><td>${tradeCell(line.color)}</td><td>${number(line.nw || 0)}</td>${isPacking ? `<td>${number(line.gw || 0)}</td><td>${line.packages ? number(line.packages) : ""}</td>` : `<td>${line.unitPrice ? number(line.unitPrice) : ""}</td><td>${amount ? number(amount) : "0"}${amount ? `<small class="auto-note">自動生成</small>` : ""}</td>`}</tr>`;
+        return `<tr><td>${index + 1}</td><td>${tradeCell(line.yarnNo)}</td><td>${tradeCell(line.count)}</td><td>${tradeCell(line.composition)}</td><td>${tradeCell(line.color)}</td><td>${number(line.nw || 0)}</td>${isPacking ? `<td>${number(line.gw || 0)}</td><td>${line.packages ? number(line.packages) : ""}</td>` : `<td>${line.unitPrice ? number(line.unitPrice) : ""}</td><td>${amount ? number(amount) : "0"}</td>`}</tr>`;
       }).join("")}</tbody>
-      <tfoot><tr><td colspan="5">TOTAL:<small class="auto-note">自動生成</small></td><td>${number(totals.nw)}</td>${isPacking ? `<td>${number(totals.gw)}</td><td></td>` : `<td></td><td>${number(totals.amount)}</td>`}</tr></tfoot>
+      <tfoot><tr><td colspan="5">TOTAL:</td><td>${number(totals.nw)}</td>${isPacking ? `<td>${number(totals.gw)}</td><td></td>` : `<td></td><td>${number(totals.amount)}</td>`}</tr></tfoot>
     </table>
     ${isPacking ? "" : `<div class="trade-summary-boxes"><div><h3>Deposit</h3><p>USD <b>${number(doc.deposit || 0)}</b></p></div><div><h3>Total Value</h3><p>USD <b>${number(doc.totalValue || Math.max(0, totals.amount - Number(doc.deposit || 0)))}</b></p></div></div>`}
   </div>`;
