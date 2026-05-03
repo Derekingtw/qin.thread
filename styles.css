@@ -713,6 +713,19 @@ input[type="file"] {
   grid-column: 1 / -1;
 }
 
+#intl [data-intl-panel],
+#intl [data-intl-preview] {
+  display: none;
+}
+
+#intl [data-intl-panel].active {
+  display: grid;
+}
+
+#intl [data-intl-preview].active {
+  display: block;
+}
+
 #intl .workspace {
   grid-template-columns: minmax(0, 1fr);
 }

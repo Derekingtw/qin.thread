@@ -70,8 +70,9 @@ let staffTab = "regular";
 let knitterTab = "profiles";
 let approvalTab = "overview";
 let payrollTab = "admin";
-let intlTab = "invoice";
+let intlTab = "setup";
 let tradeLineDrafts = [];
+let activeTradeDocId = "";
 let currentUser = null;
 
 function loadState() {
@@ -1197,7 +1198,8 @@ function removeTradeLine(index) {
 }
 
 function activeTradeDoc() {
-  return (state.tradeDocs || [])[0] || null;
+  const docs = state.tradeDocs || [];
+  return docs.find((doc) => doc.id === activeTradeDocId) || docs[0] || null;
 }
 
 function tradeCell(value) {
@@ -1253,7 +1255,8 @@ function renderIntl() {
     const totals = tradeTotals(doc.lines || []);
     return `<tr><td>${doc.no}</td><td>${doc.date || "-"}</td><td>${doc.company || "-"}</td><td>${doc.from || "-"}</td><td>${doc.product || "-"}</td><td class="num">${number(totals.nw)}</td><td class="num">${number(totals.amount)}</td><td>${rowActions("tradeDoc", doc.id, true)}</td></tr>`;
   }).join("") || emptyRow(8);
-  $("#tradePreview").innerHTML = renderTradeSheet(docs[0] || activeTradeDoc(), intlTab);
+  const previewMode = intlTab === "packing" ? "packing" : "invoice";
+  $("#tradePreview").innerHTML = renderTradeSheet(activeTradeDoc() || docs[0], previewMode);
 }
 
 function renderAll() {
@@ -1329,6 +1332,8 @@ function setPayrollTab(tab) {
 function setIntlTab(tab) {
   intlTab = tab;
   $$("[data-intl-tab]").forEach((button) => button.classList.toggle("active", button.dataset.intlTab === tab));
+  $$("[data-intl-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.intlPanel === tab));
+  $$("[data-intl-preview]").forEach((panel) => panel.classList.toggle("active", tab === "invoice" || tab === "packing"));
   renderIntl();
 }
 
@@ -1669,6 +1674,7 @@ function deleteItem(type, id) {
   if (hasDoc) return toast("已有單據使用，請保留資料");
   const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs" };
   state[map[type]] = state[map[type]].filter((item) => item.id !== id);
+  if (type === "tradeDoc" && activeTradeDocId === id) activeTradeDocId = "";
   saveState();
   toast("資料已刪除");
   renderAll();
@@ -1867,6 +1873,7 @@ function addTradeDoc(form) {
     createdAt: data.id ? (state.tradeDocs.find((item) => item.id === data.id)?.createdAt || Date.now()) : Date.now(),
   };
   state.tradeDocs = data.id ? state.tradeDocs.map((item) => item.id === data.id ? doc : item) : [doc, ...(state.tradeDocs || [])];
+  activeTradeDocId = doc.id;
   saveState();
   resetForm(form);
   toast("國貿單據已儲存");
@@ -2020,9 +2027,11 @@ function editItem(type, id) {
   }
   if (type === "tradeDoc") {
     const doc = state.tradeDocs.find((item) => item.id === id);
+    activeTradeDocId = id;
     fillForm($("#tradeForm"), doc);
-  renderTradeLineInputs(doc?.lines || [], 5);
+    renderTradeLineInputs(doc?.lines || [], 5);
     setView("intl");
+    setIntlTab("setup");
   }
 }
 
@@ -2540,6 +2549,7 @@ async function init() {
   resetForm($("#livePayrollForm"));
   resetForm($("#partnerBonusForm"));
   renderAll();
+  setIntlTab(intlTab);
   setView(activeView);
   applyPermissions();
 }

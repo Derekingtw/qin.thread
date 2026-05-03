@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-06" />
+    <link rel="stylesheet" href="styles.css?v=20260503-07" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -758,10 +758,11 @@
 
       <section class="view" id="intl">
         <div class="section-tabs" role="tablist" aria-label="國貿系統分類">
-          <button class="section-tab active" data-intl-tab="invoice" type="button">INVOICE</button>
+          <button class="section-tab active" data-intl-tab="setup" type="button">資料建立</button>
+          <button class="section-tab" data-intl-tab="invoice" type="button">INVOICE</button>
           <button class="section-tab" data-intl-tab="packing" type="button">PACKING</button>
         </div>
-        <div class="workspace">
+        <div class="workspace intl-panel active" data-intl-panel="setup">
           <form class="editor intl-editor" id="tradeForm">
             <h2>INVOICE & PACKING</h2>
             <input type="hidden" name="id" />
@@ -798,7 +799,7 @@
             <div class="table-wrap"><table><thead><tr><th>流水編號</th><th>DATE</th><th>Company</th><th>FROM</th><th>PRODUCT</th><th>Total N.W</th><th>Amount</th><th></th></tr></thead><tbody id="tradeDocRows"></tbody></table></div>
           </section>
         </div>
-        <section class="panel wide trade-preview-panel">
+        <section class="panel wide trade-preview-panel intl-panel" data-intl-preview>
           <div class="panel-head"><h2 id="tradePreviewTitle">COMMERCIAL INVOICE</h2><button class="ghost-light-btn" id="printTradeBtn" type="button"><i data-lucide="printer"></i><span>列印</span></button></div>
           <div id="tradePreview" class="trade-sheet"></div>
         </section>
