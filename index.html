@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
     <link rel="stylesheet" href="styles.css?v=20260503-16" />
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -900,7 +901,17 @@
           </section>
         </div>
         <section class="panel wide trade-preview-panel intl-panel" data-intl-preview>
-          <div class="panel-head"><h2 id="tradePreviewTitle">COMMERCIAL INVOICE</h2><div class="row-actions"><button class="ghost-light-btn" id="downloadTradeWordBtn" type="button"><i data-lucide="file-down"></i><span>下載WORD</span></button><button class="ghost-light-btn" id="printTradeBtn" type="button"><i data-lucide="printer"></i><span>列印</span></button></div></div>
+          <div class="panel-head trade-preview-head">
+            <div>
+              <h2 id="tradePreviewTitle">COMMERCIAL INVOICE</h2>
+              <label class="trade-doc-picker">瀏覽單據<select id="tradeDocSelect"></select></label>
+            </div>
+            <div class="row-actions">
+              <button class="ghost-light-btn" id="downloadTradeWordBtn" type="button"><i data-lucide="file-down"></i><span>下載 WORD</span></button>
+              <button class="ghost-light-btn" id="downloadTradePdfBtn" type="button"><i data-lucide="file-type"></i><span>下載 PDF</span></button>
+              <button class="ghost-light-btn" id="printTradeBtn" type="button"><i data-lucide="printer"></i><span>列印</span></button>
+            </div>
+          </div>
           <div id="tradePreview" class="trade-sheet"></div>
         </section>
       </section>
@@ -982,6 +993,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260503-21"></script>
+    <script src="app.js?v=20260503-22"></script>
   </body>
 </html>

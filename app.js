@@ -1436,6 +1436,18 @@ function activeTradeDoc() {
   return docs.find((doc) => doc.id === activeTradeDocId) || docs[0] || null;
 }
 
+function setActiveTradeDoc(id, openPreview = false) {
+  if (!id) return;
+  activeTradeDocId = id;
+  const doc = state.tradeDocs.find((item) => item.id === id);
+  if (doc && $("#tradeForm")) {
+    fillForm($("#tradeForm"), doc);
+    renderTradeLineInputs(doc.lines || [], 5);
+  }
+  if (openPreview && intlTab === "setup") setIntlTab("invoice");
+  renderIntl();
+}
+
 function tradeCell(value) {
   return escapeHtml(value || "");
 }
@@ -1484,11 +1496,18 @@ function renderTradeSheet(doc, mode = intlTab) {
 
 function renderIntl() {
   const docs = currentRows(state.tradeDocs || []).sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+  if (!activeTradeDocId && docs[0]) activeTradeDocId = docs[0].id;
+  if (activeTradeDocId && !docs.some((doc) => doc.id === activeTradeDocId)) activeTradeDocId = docs[0]?.id || "";
   $("#tradeDocCount").textContent = `${docs.length} 筆`;
   $("#tradeDocRows").innerHTML = docs.map((doc) => {
     const totals = tradeTotals(doc.lines || []);
-    return `<tr><td>${normalizeTradeNo(doc.no)}</td><td>${doc.date || "-"}</td><td>${doc.company || "-"}</td><td>${doc.from || "-"}</td><td>${doc.product || "-"}</td><td class="num">${number(totals.nw)}</td><td class="num">${number(totals.amount)}</td><td>${rowActions("tradeDoc", doc.id, true)}</td></tr>`;
+    return `<tr class="${doc.id === activeTradeDocId ? "selected-row" : ""}" data-trade-select="${doc.id}"><td>${normalizeTradeNo(doc.no)}</td><td>${doc.date || "-"}</td><td>${doc.company || "-"}</td><td>${doc.from || "-"}</td><td>${doc.product || "-"}</td><td class="num">${number(totals.nw)}</td><td class="num">${number(totals.amount)}</td><td><div class="row-actions"><button class="small-btn" data-select-trade-doc="${doc.id}" type="button" aria-label="瀏覽"><i data-lucide="eye"></i></button>${rowActions("tradeDoc", doc.id, true)}</div></td></tr>`;
   }).join("") || emptyRow(8);
+  const select = $("#tradeDocSelect");
+  if (select) {
+    select.innerHTML = docs.map((doc) => `<option value="${doc.id}" ${doc.id === activeTradeDocId ? "selected" : ""}>${normalizeTradeNo(doc.no)}｜${doc.date || "-"}｜${escapeHtml(doc.company || "-")}</option>`).join("") || `<option value="">尚無單據</option>`;
+    select.disabled = !docs.length;
+  }
   const previewMode = intlTab === "packing" ? "packing" : "invoice";
   $("#tradePreview").innerHTML = renderTradeSheet(activeTradeDoc() || docs[0], previewMode);
 }
@@ -1508,22 +1527,25 @@ function tradeWordHtml(doc, mode) {
 
 function tradeWordStyles() {
   return `
-    body { margin: 0; font-family: "Courier New", "Microsoft JhengHei", monospace; color: #000; }
-    .trade-document { width: 100%; box-sizing: border-box; padding: 10mm; font-weight: 700; }
-    .trade-doc-title { padding: 12px; background: #1f527c; color: #fff; text-align: center; font-size: 22pt; letter-spacing: 1px; }
-    .trade-doc-meta { padding: 8px 0; text-align: right; color: #1f527c; }
-    .trade-info-grid { display: table; width: 100%; table-layout: fixed; margin: 10px 0 18px; }
-    .trade-box { display: table-cell; width: 33.33%; padding: 0 6px; vertical-align: top; }
-    .trade-box h3 { margin: 0 0 6px; padding: 6px; text-align: center; background: #bed8ee; font-size: 14pt; }
+    @page { size: A4 landscape; margin: 8mm; }
+    body { margin: 0; font-family: "Courier New", "Microsoft JhengHei", monospace; color: #101010; background: #fff; }
+    .trade-document { width: 100%; box-sizing: border-box; padding: 7mm; font-weight: 700; border: 2px solid #1f527c; }
+    .trade-doc-title { padding: 10px 12px; background: #1f527c; color: #fff; text-align: center; font-size: 24pt; letter-spacing: 2px; border-bottom: 4px solid #d9d3b8; }
+    .trade-doc-meta { padding: 8px 0; text-align: right; color: #1f527c; font-size: 12pt; }
+    .trade-info-grid { display: table; width: 100%; table-layout: fixed; margin: 10px 0 16px; border-spacing: 8px 0; }
+    .trade-box { display: table-cell; width: 33.33%; vertical-align: top; border: 1px solid #1f527c; }
+    .trade-box h3 { margin: 0; padding: 7px; text-align: center; background: #bed8ee; font-size: 13pt; border-bottom: 1px solid #1f527c; }
     .trade-box.traffic h3 { background: #d9d3b8; }
     .trade-box.mark h3 { background: #dfd9e9; }
-    .trade-box.mark pre { min-height: 70px; margin: 0; padding: 8px; background: #ffe79d; text-align: center; white-space: pre-wrap; font: inherit; }
+    .trade-box.mark pre { min-height: 74px; margin: 0; padding: 8px; background: #ffe79d; text-align: center; white-space: pre-wrap; font: inherit; }
     .trade-box p { margin: 0; }
-    .trade-box b { display: inline-block; width: 34%; padding: 3px; box-sizing: border-box; background: #f4f4f4; }
-    .trade-box span { display: inline-block; width: 64%; padding: 3px; box-sizing: border-box; background: #f4f4f4; word-break: break-word; }
+    .trade-box b { display: inline-block; width: 34%; padding: 4px; box-sizing: border-box; background: #f4f4f4; }
+    .trade-box span { display: inline-block; width: 64%; padding: 4px; box-sizing: border-box; background: #fff; word-break: break-word; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    th, td { border: 1px solid #000; padding: 4px; text-align: center; font-size: 9pt; word-break: break-word; }
+    th, td { border: 1px solid #000; padding: 4px; text-align: center; font-size: 8.5pt; word-break: break-word; }
     th { background: #1f527c; color: #fff; }
+    tbody tr:nth-child(even) td { background: #f8fbfb; }
+    .trade-document.packing tbody tr td { background: #fff6d8; }
     tfoot td { font-weight: 900; }
     .auto-note { display: none; }
     .trade-summary-boxes { display: table; margin-top: 14px; }
@@ -1546,6 +1568,147 @@ function downloadTradeWord() {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function pdfText(doc, text, x, y, options = {}) {
+  const maxWidth = options.maxWidth || 30;
+  const lines = doc.splitTextToSize(String(text || ""), maxWidth);
+  doc.text(lines, x, y, options);
+  return y + (lines.length * 4.8);
+}
+
+function drawPdfBox(pdf, x, y, w, h, title, rows, fill = [190, 216, 238]) {
+  pdf.setDrawColor(31, 82, 124);
+  pdf.setLineWidth(0.35);
+  pdf.rect(x, y, w, h);
+  pdf.setFillColor(...fill);
+  pdf.rect(x, y, w, 9, "F");
+  pdf.setFont("courier", "bold");
+  pdf.setFontSize(12);
+  pdf.setTextColor(0, 0, 0);
+  pdf.text(title, x + w / 2, y + 6.2, { align: "center" });
+  let rowY = y + 15;
+  pdf.setFontSize(9);
+  rows.forEach(([label, value]) => {
+    pdf.setFont("courier", "bold");
+    pdf.text(label, x + 3, rowY);
+    pdf.setFont("courier", "normal");
+    pdf.text(pdf.splitTextToSize(String(value || ""), w - 32), x + 30, rowY);
+    rowY += 7;
+  });
+}
+
+function drawTradePdfHeader(pdf, tradeDoc, mode) {
+  const isPacking = mode === "packing";
+  const title = isPacking ? "COMMERCIAL PACKING" : "COMMERCIAL INVOICE";
+  pdf.setFillColor(31, 82, 124);
+  pdf.rect(10, 8, 277, 14, "F");
+  pdf.setFont("courier", "bold");
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFontSize(20);
+  pdf.text(title, 148.5, 18, { align: "center" });
+  pdf.setTextColor(31, 82, 124);
+  pdf.setFontSize(11);
+  pdf.text(`NO: ${normalizeTradeNo(tradeDoc.no)}`, 285, 30, { align: "right" });
+  drawPdfBox(pdf, 10, 34, 86, 48, isPacking ? "BUYER (Linked from Invoice)" : "BUYER INFORMATION", [
+    ["Company:", tradeDoc.company],
+    ["Consignee:", tradeDoc.consignee],
+    ["Phone:", tradeDoc.phone],
+    ["Address:", tradeDoc.address],
+  ], [190, 216, 238]);
+  drawPdfBox(pdf, 106, 34, 82, 48, "Traffic information", [
+    ["DATE:", String(tradeDoc.date || "").replaceAll("-", "/")],
+    ["FROM:", tradeDoc.from],
+    ["PRODUCT:", tradeDoc.product],
+    ["TRANS:", tradeDoc.transaction],
+  ], [217, 211, 184]);
+  drawPdfBox(pdf, 198, 34, 89, 48, "Shipping Mark:", [], [223, 217, 233]);
+  pdf.setFillColor(255, 231, 157);
+  pdf.rect(198, 43, 89, 39, "F");
+  pdf.setTextColor(0, 0, 0);
+  pdf.setFont("courier", "bold");
+  pdf.setFontSize(11);
+  pdf.text(pdf.splitTextToSize(String(tradeDoc.shippingMark || ""), 76), 242.5, 52, { align: "center" });
+}
+
+function drawTradePdfTable(pdf, tradeDoc, mode) {
+  const isPacking = mode === "packing";
+  const lines = tradeDoc.lines || [];
+  const totals = tradeTotals(lines);
+  const columns = isPacking
+    ? [
+      ["No.", 12], ["Yarn No.", 42], ["Count", 24], ["Composition", 70], ["Color", 28], ["N.W(KG)", 28], ["G.W(KG)", 28], ["Packages", 35],
+    ]
+    : [
+      ["No.", 12], ["Yarn No.", 42], ["Count", 24], ["Composition", 70], ["Color", 28], ["N.W(KG)", 28], ["Unit Price", 30], ["Amount", 33],
+    ];
+  let y = 90;
+  const x0 = 10;
+  const rowH = 8;
+  const header = () => {
+    let x = x0;
+    pdf.setFillColor(31, 82, 124);
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont("courier", "bold");
+    pdf.setFontSize(9);
+    columns.forEach(([name, width]) => {
+      pdf.rect(x, y, width, rowH, "FD");
+      pdf.text(name, x + width / 2, y + 5.4, { align: "center" });
+      x += width;
+    });
+    y += rowH;
+    pdf.setTextColor(0, 0, 0);
+  };
+  header();
+  pdf.setFontSize(8.5);
+  const drawRow = (cells, fill = null) => {
+    if (y > 190) {
+      pdf.addPage();
+      y = 16;
+      header();
+    }
+    let x = x0;
+    if (fill) pdf.setFillColor(...fill);
+    cells.forEach((cell, index) => {
+      const width = columns[index][1];
+      fill ? pdf.rect(x, y, width, rowH, "FD") : pdf.rect(x, y, width, rowH);
+      pdf.text(pdf.splitTextToSize(String(cell || ""), width - 3), x + width / 2, y + 5.2, { align: "center" });
+      x += width;
+    });
+    y += rowH;
+  };
+  lines.forEach((line, index) => {
+    const amount = Number(line.nw || 0) * Number(line.unitPrice || 0);
+    drawRow(isPacking
+      ? [index + 1, line.yarnNo, line.count, line.composition, line.color, number(line.nw || 0), number(line.gw || 0), line.packages ? number(line.packages) : ""]
+      : [index + 1, line.yarnNo, line.count, line.composition, line.color, number(line.nw || 0), line.unitPrice ? number(line.unitPrice) : "", amount ? number(amount) : "0"],
+      isPacking ? [255, 246, 216] : (index % 2 ? [248, 251, 251] : null)
+    );
+  });
+  drawRow(isPacking ? ["", "", "", "", "TOTAL:", number(totals.nw), number(totals.gw), ""] : ["", "", "", "", "TOTAL:", number(totals.nw), "", number(totals.amount)], [233, 239, 223]);
+  if (!isPacking) {
+    y += 8;
+    pdf.setFont("courier", "bold");
+    pdf.setFontSize(10);
+    pdf.rect(10, y, 46, 16);
+    pdf.text("Deposit", 33, y + 6, { align: "center" });
+    pdf.text(`USD ${number(tradeDoc.deposit || 0)}`, 33, y + 13, { align: "center" });
+    pdf.rect(76, y, 54, 16);
+    pdf.text("Total Value", 103, y + 6, { align: "center" });
+    pdf.text(`USD ${number(tradeDoc.totalValue || Math.max(0, totals.amount - Number(tradeDoc.deposit || 0)))}`, 103, y + 13, { align: "center" });
+  }
+}
+
+function downloadTradePdf() {
+  const tradeDoc = activeTradeDoc();
+  if (!tradeDoc) return toast("請先建立國貿單據");
+  if (!window.jspdf?.jsPDF) return toast("PDF 工具載入中，請稍後再試");
+  const mode = intlTab === "packing" ? "packing" : "invoice";
+  const title = mode === "packing" ? "PACKING" : "INVOICE";
+  const pdf = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  drawTradePdfHeader(pdf, tradeDoc, mode);
+  drawTradePdfTable(pdf, tradeDoc, mode);
+  pdf.save(`${normalizeTradeNo(tradeDoc.no)}_${title}.pdf`);
 }
 
 function renderAll() {
@@ -2787,6 +2950,14 @@ function bindEvents() {
     const remove = event.target.closest("[data-remove-trade-line]");
     if (remove) removeTradeLine(Number(remove.dataset.removeTradeLine));
   });
+  $("#tradeDocSelect").addEventListener("change", (event) => setActiveTradeDoc(event.target.value));
+  $("#tradeDocRows").addEventListener("click", (event) => {
+    const selectButton = event.target.closest("[data-select-trade-doc]");
+    const row = event.target.closest("[data-trade-select]");
+    if (!selectButton && (event.target.closest("[data-edit]") || event.target.closest("[data-delete]"))) return;
+    const id = selectButton?.dataset.selectTradeDoc || row?.dataset.tradeSelect;
+    if (id) setActiveTradeDoc(id, Boolean(selectButton));
+  });
   ["adminPayrollForm", "livePayrollForm", "partnerBonusForm"].forEach((formId) => {
     const form = $(`#${formId}`);
     form.addEventListener("input", () => {
@@ -2855,6 +3026,7 @@ function bindEvents() {
   });
   $("#printTradeBtn").addEventListener("click", () => window.print());
   $("#downloadTradeWordBtn").addEventListener("click", downloadTradeWord);
+  $("#downloadTradePdfBtn").addEventListener("click", downloadTradePdf);
   $("#knitterForm").addEventListener("submit", (event) => {
     event.preventDefault();
     addKnitter(event.currentTarget);
