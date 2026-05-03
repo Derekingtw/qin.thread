@@ -1135,6 +1135,28 @@ function tradeTotals(lines = []) {
   }), { nw: 0, gw: 0, amount: 0 });
 }
 
+function tradeLinesFromForm(form) {
+  const formData = new FormData(form);
+  return formData.getAll("yarnNo").map((_, index) => ({
+    yarnNo: formData.getAll("yarnNo")[index]?.trim() || "",
+    count: formData.getAll("count")[index]?.trim() || "",
+    composition: formData.getAll("composition")[index]?.trim() || "",
+    color: formData.getAll("color")[index]?.trim() || "",
+    nw: Number(formData.getAll("nw")[index] || 0),
+    gw: Number(formData.getAll("gw")[index] || 0),
+    unitPrice: Number(formData.getAll("unitPrice")[index] || 0),
+    packages: Number(formData.getAll("packages")[index] || 0),
+  })).filter((line) => line.yarnNo || line.count || line.composition || line.color || line.nw || line.gw || line.unitPrice || line.packages);
+}
+
+function updateTradeAutoFields() {
+  const form = $("#tradeForm");
+  if (!form) return;
+  const totals = tradeTotals(tradeLinesFromForm(form));
+  const deposit = Number(form.elements.deposit.value || 0);
+  form.elements.totalValue.value = Math.max(0, totals.amount - deposit).toFixed(2);
+}
+
 function renderTradeLineInputs(lines = []) {
   const rows = Array.from({ length: 10 }, (_, index) => lines[index] || {});
   $("#tradeLineInputs").innerHTML = rows.map((line) => `<div class="trade-line-row">
@@ -1147,6 +1169,7 @@ function renderTradeLineInputs(lines = []) {
     <input name="unitPrice" type="number" min="0" step="0.01" value="${line.unitPrice || ""}" />
     <input name="packages" type="number" min="0" step="1" value="${line.packages || ""}" />
   </div>`).join("");
+  updateTradeAutoFields();
 }
 
 function activeTradeDoc() {
@@ -1191,9 +1214,9 @@ function renderTradeSheet(doc, mode = intlTab) {
       <thead><tr><th>No.</th><th>Yarn No.</th><th>Count</th><th>Composition</th><th>Color</th><th>N.W(KG)</th>${isPacking ? "<th>G.W(KG)</th><th>Packages</th>" : "<th>Unit Price</th><th>Amount</th>"}</tr></thead>
       <tbody>${lines.map((line, index) => {
         const amount = Number(line.nw || 0) * Number(line.unitPrice || 0);
-        return `<tr><td>${index + 1}</td><td>${tradeCell(line.yarnNo)}</td><td>${tradeCell(line.count)}</td><td>${tradeCell(line.composition)}</td><td>${tradeCell(line.color)}</td><td>${number(line.nw || 0)}</td>${isPacking ? `<td>${number(line.gw || 0)}</td><td>${line.packages ? number(line.packages) : ""}</td>` : `<td>${line.unitPrice ? number(line.unitPrice) : ""}</td><td>${amount ? number(amount) : "0"}</td>`}</tr>`;
+        return `<tr><td>${index + 1}</td><td>${tradeCell(line.yarnNo)}</td><td>${tradeCell(line.count)}</td><td>${tradeCell(line.composition)}</td><td>${tradeCell(line.color)}</td><td>${number(line.nw || 0)}</td>${isPacking ? `<td>${number(line.gw || 0)}</td><td>${line.packages ? number(line.packages) : ""}</td>` : `<td>${line.unitPrice ? number(line.unitPrice) : ""}</td><td>${amount ? number(amount) : "0"}${amount ? `<small class="auto-note">自動生成</small>` : ""}</td>`}</tr>`;
       }).join("")}</tbody>
-      <tfoot><tr><td colspan="5">TOTAL:</td><td>${number(totals.nw)}</td>${isPacking ? `<td>${number(totals.gw)}</td><td></td>` : `<td></td><td>${number(totals.amount)}</td>`}</tr></tfoot>
+      <tfoot><tr><td colspan="5">TOTAL:<small class="auto-note">自動生成</small></td><td>${number(totals.nw)}</td>${isPacking ? `<td>${number(totals.gw)}</td><td></td>` : `<td></td><td>${number(totals.amount)}</td>`}</tr></tfoot>
     </table>
     ${isPacking ? "" : `<div class="trade-summary-boxes"><div><h3>Deposit</h3><p>USD <b>${number(doc.deposit || 0)}</b></p></div><div><h3>Total Value</h3><p>USD <b>${number(doc.totalValue || Math.max(0, totals.amount - Number(doc.deposit || 0)))}</b></p></div></div>`}
   </div>`;
@@ -1371,6 +1394,7 @@ function resetForm(form) {
     form.elements.product.value = "YARN";
     form.elements.transaction.value = "T/T";
     renderTradeLineInputs();
+    updateTradeAutoFields();
   }
 }
 
@@ -1798,19 +1822,9 @@ function addLiveSale(form) {
 
 function addTradeDoc(form) {
   const data = Object.fromEntries(new FormData(form));
-  const formData = new FormData(form);
-  const yarnNos = formData.getAll("yarnNo");
-  const lines = yarnNos.map((_, index) => ({
-    yarnNo: formData.getAll("yarnNo")[index]?.trim() || "",
-    count: formData.getAll("count")[index]?.trim() || "",
-    composition: formData.getAll("composition")[index]?.trim() || "",
-    color: formData.getAll("color")[index]?.trim() || "",
-    nw: Number(formData.getAll("nw")[index] || 0),
-    gw: Number(formData.getAll("gw")[index] || 0),
-    unitPrice: Number(formData.getAll("unitPrice")[index] || 0),
-    packages: Number(formData.getAll("packages")[index] || 0),
-  })).filter((line) => line.yarnNo || line.count || line.composition || line.color || line.nw || line.gw || line.unitPrice || line.packages);
+  const lines = tradeLinesFromForm(form);
   if (!lines.length) return toast("請至少填寫一筆商品明細");
+  const totals = tradeTotals(lines);
   const doc = {
     id: data.id || uid("trade"),
     no: data.no || generateTradeNo(data.id),
@@ -1824,7 +1838,7 @@ function addTradeDoc(form) {
     transaction: data.transaction.trim(),
     shippingMark: data.shippingMark.trim(),
     deposit: Number(data.deposit || 0),
-    totalValue: Number(data.totalValue || 0),
+    totalValue: Math.max(0, totals.amount - Number(data.deposit || 0)),
     lines,
     createdAt: data.id ? (state.tradeDocs.find((item) => item.id === data.id)?.createdAt || Date.now()) : Date.now(),
   };
@@ -2288,6 +2302,7 @@ function bindEvents() {
   $("#sampleImageInput").addEventListener("change", (event) => handleImageUpload(event, "sampleForm", "sampleImagePreview"));
   $("#liveSaleRevenue").addEventListener("input", updateLiveSaleNet);
   $("#liveSaleRefund").addEventListener("input", updateLiveSaleNet);
+  $("#tradeForm").addEventListener("input", updateTradeAutoFields);
   ["adminPayrollForm", "livePayrollForm", "partnerBonusForm"].forEach((formId) => {
     const form = $(`#${formId}`);
     form.addEventListener("input", () => {

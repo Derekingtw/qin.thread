@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-03" />
+    <link rel="stylesheet" href="styles.css?v=20260503-04" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -765,7 +765,7 @@
           <form class="editor intl-editor" id="tradeForm">
             <h2>INVOICE & PACKING</h2>
             <input type="hidden" name="id" />
-            <label>流水編號<input readonly name="no" id="tradeNo" /></label>
+            <label class="auto-label">流水編號<span>自動生成</span><input readonly name="no" id="tradeNo" placeholder="自動生成" /></label>
             <label>DATE<input required name="date" type="date" /></label>
             <label>Company<input required name="company" placeholder="Yeonil Textile" /></label>
             <label>Consignee<input name="consignee" placeholder="Ju, Kangbock" /></label>
@@ -776,7 +776,7 @@
             <label>TRANSACTION<input name="transaction" value="T/T" /></label>
             <label>Shipping Mark<textarea name="shippingMark" rows="4" placeholder="HT&#10;(IN TRL)&#10;B/NO:1~31"></textarea></label>
             <label>Deposit USD<input name="deposit" type="number" min="0" step="0.01" value="0" /></label>
-            <label>Total Value USD<input name="totalValue" type="number" min="0" step="0.01" value="0" /></label>
+            <label class="auto-label">Total Value USD<span>自動生成</span><input readonly name="totalValue" id="tradeTotalValue" placeholder="自動生成" /></label>
             <div class="trade-lines">
               <strong>商品明細</strong>
               <div class="trade-line-head"><span>Yarn No.</span><span>Count</span><span>Composition</span><span>Color</span><span>N.W(KG)</span><span>G.W(KG)</span><span>Unit Price</span><span>Packages</span></div>
