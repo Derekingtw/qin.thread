@@ -1,6 +1,6 @@
 const STORAGE_KEY = "oa_inventory_state_v1";
 const SESSION_KEY = "oa_inventory_session_v1";
-const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "contracts", "leave", "approvals", "payroll", "intl", "tracking", "production", "settings"];
+const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "contracts", "leave", "approvals", "payroll", "intl", "tracking", "production", "growth", "settings"];
 const ERP_VIEWS = ["products", "inventory", "purchases", "sales", "shipping"];
 const LIVE_SYSTEM_VIEWS = ["live", "liveSales"];
 
@@ -53,6 +53,7 @@ const defaultState = () => ({
   livePayrolls: [],
   partnerBonuses: [],
   tradeDocs: [],
+  growthRecords: [],
   announcements: [],
   settings: {
     positions: ["負責人", "主管", "執行負責", "品牌助理"],
@@ -117,7 +118,8 @@ function isMeaningfulState(value) {
       (value.liveSales || []).length ||
       (value.knitters || []).length ||
       (value.samples || []).length ||
-      (value.tradeDocs || []).length
+      (value.tradeDocs || []).length ||
+      (value.growthRecords || []).length
     )
   );
 }
@@ -211,6 +213,10 @@ function normalizeState(saved) {
       packages: Number(line.packages || 0),
     })),
   }));
+  next.growthRecords = (next.growthRecords || []).map((record) => ({
+    ...record,
+    xp: Number(record.xp || 0),
+  }));
   return next;
 }
 
@@ -235,9 +241,9 @@ function permissionsForStaffRole(role) {
   if (normalized === "管理員") return [...ALL_VIEWS];
   if (normalized === "代理管理員") return ALL_VIEWS.filter((view) => view !== "settings");
   if (normalized === "核心人員") {
-    return ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "leave", "approvals", "payroll", "intl", "tracking", "production"];
+    return ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "leave", "approvals", "payroll", "intl", "tracking", "production", "growth"];
   }
-  return ["dashboard", "products", "inventory", "sales", "liveSales", "leave"];
+  return ["dashboard", "products", "inventory", "sales", "liveSales", "leave", "growth"];
 }
 
 function navViewFor(view) {
@@ -545,6 +551,45 @@ function staffById(id) {
   return (state.staff || []).find((item) => item.id === id);
 }
 
+const GROWTH_LEVELS = [
+  { name: "新人", min: 0 },
+  { name: "熟手", min: 100 },
+  { name: "核心", min: 260 },
+  { name: "主管", min: 520 },
+  { name: "合夥候選", min: 900 },
+  { name: "合夥人", min: 1400 },
+];
+
+function staffXp(staffId) {
+  return (state.growthRecords || []).filter((record) => record.staffId === staffId).reduce((sum, record) => sum + Number(record.xp || 0), 0);
+}
+
+function growthLevel(xp) {
+  const currentIndex = GROWTH_LEVELS.reduce((match, level, index) => xp >= level.min ? index : match, 0);
+  const current = GROWTH_LEVELS[currentIndex];
+  const next = GROWTH_LEVELS[currentIndex + 1];
+  const span = next ? next.min - current.min : 1;
+  const progress = next ? Math.min(100, Math.round(((xp - current.min) / span) * 100)) : 100;
+  return { ...current, index: currentIndex + 1, next, progress };
+}
+
+function currentUserStaff() {
+  return staffById(currentUser?.staffId) || (state.staff || []).find((item) => normalizePhone(item.phone) === normalizePhone(currentUser?.phone || currentUser?.username));
+}
+
+function updateLoginGrowthStrip() {
+  const staff = currentUserStaff();
+  const name = staff?.name || currentUser?.name || "未登入";
+  const xp = staff ? staffXp(staff.id) : 0;
+  const level = growthLevel(xp);
+  const nameEl = $("#loginUserName");
+  if (!nameEl) return;
+  nameEl.textContent = name;
+  $("#loginUserLevel").textContent = `Lv.${level.index} ${level.name}`;
+  $("#loginUserXpBar").style.width = `${level.progress}%`;
+  $("#loginUserXpPercent").textContent = `${level.progress}%`;
+}
+
 function staffGender(id) {
   return staffById(id)?.gender || "";
 }
@@ -622,7 +667,7 @@ function syncSelects() {
   partnerOptions($("#shipmentPartner"), "customer");
   liveShowOptions($("#liveSaleShow"));
   positionOptions($("#staffTitle"));
-  ["leaveStaff", "tripStaff", "purchaseRequestStaff", "proposalStaff"].forEach((id) => staffOptions($(`#${id}`)));
+  ["leaveStaff", "tripStaff", "purchaseRequestStaff", "proposalStaff", "growthStaff"].forEach((id) => staffOptions($(`#${id}`)));
   ["adminPayrollStaff", "livePayrollStaff", "partnerBonusStaff"].forEach((id) => staffOptions($(`#${id}`)));
   ["leaveApprover", "tripApprover", "purchaseRequestApprover", "proposalApprover"].forEach((id) => staffOptions($(`#${id}`), true));
   knitterOptions($("#sampleKnitter"));
@@ -1029,6 +1074,35 @@ function viewLabel(view) {
   return $(`.nav-item[data-view="${view}"] span`)?.textContent || view;
 }
 
+function renderGrowth() {
+  const staffRows = currentRows(state.staff || []).filter((item) => item.status !== "離職");
+  $("#growthProfileCount").textContent = `${staffRows.length} 人`;
+  $("#growthProfiles").innerHTML = staffRows.map((staff) => {
+    const xp = staffXp(staff.id);
+    const level = growthLevel(xp);
+    const nextText = level.next ? `距離 ${level.next.name} 還差 ${number(level.next.min - xp)} EXP` : "已達最高等級";
+    return `<article class="growth-card">
+      <div class="growth-card-head"><strong>${staff.name}</strong><span>Lv.${level.index} ${level.name}</span></div>
+      <small>${staff.title || "待補職位"} · ${staff.dept || "待補部門"}</small>
+      <div class="growth-progress"><i style="width:${level.progress}%"></i></div>
+      <div class="growth-meta"><span>${number(xp)} EXP</span><b>${level.progress}%</b></div>
+      <p>${nextText}</p>
+    </article>`;
+  }).join("") || `<p class="empty">尚無人事資料</p>`;
+
+  const records = currentRows(state.growthRecords || []).sort((a, b) => `${b.date}${b.createdAt}`.localeCompare(`${a.date}${a.createdAt}`));
+  $("#growthRecordCount").textContent = `${records.length} 筆`;
+  $("#growthRows").innerHTML = records.map((record) => `<tr>
+    <td>${record.date || "-"}</td>
+    <td>${staffName(record.staffId)}</td>
+    <td>${tag(record.category || "-", "blue")}</td>
+    <td class="num">+${number(record.xp)} EXP</td>
+    <td>${record.note || "-"}</td>
+    <td>${rowActions("growthRecord", record.id)}</td>
+  </tr>`).join("") || emptyRow(6);
+  updateLoginGrowthStrip();
+}
+
 function renderStaff() {
   const rows = currentRows(state.staff || []);
   $("#staffCount").textContent = `${rows.length} 人`;
@@ -1349,6 +1423,7 @@ function renderAll() {
   renderApprovals();
   renderPayroll();
   renderIntl();
+  renderGrowth();
   renderSettings();
   if (window.lucide) window.lucide.createIcons();
   if (currentLang === "zh-CN") applyLanguage();
@@ -1457,6 +1532,10 @@ function resetForm(form) {
   if (form.elements.receivedDate) form.elements.receivedDate.value = today();
   if (form.elements.startDate) form.elements.startDate.value = today();
   if (form.elements.endDate) form.elements.endDate.value = today();
+  if (form.id === "growthForm") {
+    form.elements.date.value = today();
+    form.elements.xp.value = 10;
+  }
   if (form.id === "sellProductForm") {
     form.elements.sku.value = generateSaleSku();
     form.elements.imageData.value = "";
@@ -1743,7 +1822,7 @@ function deleteItem(type, id) {
       ? state.purchases.some((doc) => doc.partnerId === id) || state.sales.some((doc) => doc.partnerId === id)
       : false;
   if (hasDoc) return toast("已有單據使用，請保留資料");
-  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs" };
+  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs", growthRecord: "growthRecords" };
   state[map[type]] = state[map[type]].filter((item) => item.id !== id);
   if (type === "tradeDoc" && activeTradeDocId === id) activeTradeDocId = "";
   saveState();
@@ -1758,6 +1837,21 @@ function addGeneric(form, key, prefix, transform = (data) => data) {
   saveState();
   resetForm(form);
   toast("資料已新增");
+  renderAll();
+}
+
+function addGrowthRecord(form) {
+  const data = Object.fromEntries(new FormData(form));
+  const xp = Number(data.xp || 0);
+  if (!data.staffId) return toast("請先選擇人員");
+  if (xp <= 0) return toast("經驗值需大於 0");
+  state.growthRecords = [
+    { id: uid("grow"), staffId: data.staffId, category: data.category, xp, date: data.date || today(), note: data.note?.trim() || "", createdAt: Date.now() },
+    ...(state.growthRecords || []),
+  ];
+  saveState();
+  resetForm(form);
+  toast("養成紀錄已新增");
   renderAll();
 }
 
@@ -2162,6 +2256,7 @@ function reportContent(view) {
     approvals: "審批系統報表",
     payroll: "會計系統報表",
     intl: "國貿系統報表",
+    growth: "養成系統報表",
     settings: "資料設定報表",
   };
   const saleProducts = state.products.filter((product) => product.type === "sale");
@@ -2217,6 +2312,7 @@ function reportContent(view) {
       ...(state.partnerBonuses || []).map((p) => ["合夥人紅利", staffName(p.staffId), p.gender || staffGender(p.staffId), money(p.netProfit), `${number(p.bonusRate)}%`, money(p.bonusAmount)]),
     ]),
     intl: () => reportTable(["流水編號", "DATE", "Company", "FROM", "PRODUCT", "N.W(KG)", "Amount"], (state.tradeDocs || []).map((doc) => { const totals = tradeTotals(doc.lines || []); return [doc.no, doc.date, doc.company, doc.from, doc.product, number(totals.nw), number(totals.amount)]; })),
+    growth: () => reportTable(["日期", "人員", "類別", "經驗值", "說明"], (state.growthRecords || []).map((p) => [p.date, staffName(p.staffId), p.category, `+${number(p.xp)} EXP`, p.note])),
     settings: () => reportTable(["職位名稱"], (state.settings?.positions || []).map((name) => [name])),
   };
 
@@ -2538,6 +2634,10 @@ function bindEvents() {
     event.preventDefault();
     addApprovalRequest(event.currentTarget, "proposalRequests", "prop", (data) => ({ ...data }));
   });
+  $("#growthForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addGrowthRecord(event.currentTarget);
+  });
   $("#adminPayrollForm").addEventListener("submit", (event) => {
     event.preventDefault();
     addAdminPayroll(event.currentTarget);
@@ -2618,6 +2718,7 @@ async function init() {
   resetForm($("#tripForm"));
   resetForm($("#purchaseRequestForm"));
   resetForm($("#proposalForm"));
+  resetForm($("#growthForm"));
   resetForm($("#adminPayrollForm"));
   resetForm($("#livePayrollForm"));
   resetForm($("#partnerBonusForm"));

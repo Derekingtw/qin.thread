@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-08" />
+    <link rel="stylesheet" href="styles.css?v=20260503-09" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -53,6 +53,7 @@
         <button class="nav-item" data-view="intl"><i data-lucide="ship"></i><span>國貿系統</span></button>
         <button class="nav-item" data-view="tracking"><i data-lucide="route"></i><span>貨品追蹤</span></button>
         <button class="nav-item" data-view="production"><i data-lucide="workflow"></i><span>生產圖</span></button>
+        <button class="nav-item" data-view="growth"><i data-lucide="badge-check"></i><span>養成系統</span></button>
         <button class="nav-item" data-view="settings"><i data-lucide="settings"></i><span>資料設定</span></button>
       </nav>
       <div class="sidebar-footer">
@@ -72,6 +73,11 @@
             <i data-lucide="search"></i>
             <input id="globalSearch" type="search" placeholder="搜尋商品、單號、單位" />
           </label>
+          <div class="user-growth-strip" id="userGrowthStrip">
+            <div><strong id="loginUserName">未登入</strong><span id="loginUserLevel">Lv.1 新人</span></div>
+            <div class="xp-track"><i id="loginUserXpBar"></i></div>
+            <b id="loginUserXpPercent">0%</b>
+          </div>
           <button class="ghost-light-btn" id="reportBtn"><i data-lucide="printer"></i><span>報表列印</span></button>
           <button class="ghost-light-btn" id="langBtn"><i data-lucide="languages"></i><span>简体</span></button>
           <button class="ghost-light-btn" id="logoutBtn"><i data-lucide="log-out"></i><span>登出</span></button>
@@ -843,6 +849,28 @@
         </section>
       </section>
 
+      <section class="view" id="growth">
+        <div class="workspace">
+          <form class="editor" id="growthForm">
+            <h2>養成紀錄</h2>
+            <label>人員<select required name="staffId" id="growthStaff"></select></label>
+            <label>養成類別<select name="category"><option>任務完成</option><option>技能提升</option><option>直播表現</option><option>銷售成果</option><option>準時交付</option><option>管理貢獻</option></select></label>
+            <label>經驗值<input required name="xp" type="number" min="1" step="1" value="10" /></label>
+            <label>紀錄日期<input required name="date" type="date" /></label>
+            <label>說明<input name="note" placeholder="例如：完成新人訓練、直播成交達標、準時交付樣衣" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增紀錄</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>人員成長檔案</h2><span id="growthProfileCount" class="pill">0 人</span></div>
+            <div class="growth-grid" id="growthProfiles"></div>
+          </section>
+          <section class="panel wide">
+            <div class="panel-head"><h2>養成紀錄</h2><span id="growthRecordCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>日期</th><th>人員</th><th>類別</th><th>經驗值</th><th>說明</th><th></th></tr></thead><tbody id="growthRows"></tbody></table></div>
+          </section>
+        </div>
+      </section>
+
       <section class="view" id="settings">
         <div class="section-tabs" role="tablist" aria-label="資料設定分類">
           <button class="section-tab active" data-setting-tab="positions" type="button">職位設定</button>
@@ -877,6 +905,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260503-12"></script>
+    <script src="app.js?v=20260503-13"></script>
   </body>
 </html>
