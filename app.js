@@ -1167,14 +1167,15 @@ function renderTradeLineInputs(lines = [], minRows = 5) {
   tradeLineDrafts = Array.from({ length: rowCount }, (_, index) => lines[index] || {});
   $("#tradeLineInputs").innerHTML = tradeLineDrafts.map((line, index) => `<div class="trade-line-row" data-trade-line="${index}">
     <span class="trade-line-no">${index + 1}</span>
-    <input name="yarnNo" value="${escapeHtml(line.yarnNo || "")}" placeholder="H-28956" />
-    <input name="count" value="${escapeHtml(line.count || "")}" placeholder="35MM" />
-    <input name="composition" value="${escapeHtml(line.composition || "")}" placeholder="VISCOSE100%" />
-    <input name="color" value="${escapeHtml(line.color || "")}" placeholder="#105" />
-    <input name="nw" type="number" min="0" step="0.01" value="${line.nw || ""}" />
-    <input name="gw" type="number" min="0" step="0.01" value="${line.gw || ""}" />
-    <input name="unitPrice" type="number" min="0" step="0.01" value="${line.unitPrice || ""}" />
-    <input name="packages" type="number" min="0" step="1" value="${line.packages || ""}" />
+    <input class="shared-field" name="yarnNo" value="${escapeHtml(line.yarnNo || "")}" placeholder="共用 H-28956" />
+    <input class="shared-field" name="count" value="${escapeHtml(line.count || "")}" placeholder="共用 35MM" />
+    <input class="shared-field" name="composition" value="${escapeHtml(line.composition || "")}" placeholder="共用 VISCOSE100%" />
+    <input class="shared-field" name="color" value="${escapeHtml(line.color || "")}" placeholder="共用 #105" />
+    <input class="shared-field" name="nw" type="number" min="0" step="0.01" value="${line.nw || ""}" placeholder="共用" />
+    <input class="invoice-field" name="unitPrice" type="number" min="0" step="0.01" value="${line.unitPrice || ""}" placeholder="INVOICE" />
+    <input class="auto-field invoice-field" readonly value="${Number(line.nw || 0) && Number(line.unitPrice || 0) ? (Number(line.nw || 0) * Number(line.unitPrice || 0)).toFixed(2) : "自動生成"}" />
+    <input class="packing-field" name="gw" type="number" min="0" step="0.01" value="${line.gw || ""}" placeholder="PACKING" />
+    <input class="packing-field" name="packages" type="number" min="0" step="1" value="${line.packages || ""}" placeholder="PACKING" />
     <button class="small-btn delete" data-remove-trade-line="${index}" type="button" aria-label="刪除此列"><i data-lucide="trash-2"></i></button>
   </div>`).join("");
   if (window.lucide) window.lucide.createIcons();

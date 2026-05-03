@@ -734,11 +734,21 @@ input[type="file"] {
 }
 
 #intl .intl-editor textarea {
-  min-height: 90px;
+  min-height: 160px;
   resize: vertical;
 }
 
-#intl .intl-editor label:has(textarea) {
+#intl .intl-editor .shipping-mark-field {
+  grid-column: 4;
+  grid-row: 2 / span 3;
+  align-self: stretch;
+}
+
+#intl .intl-editor .shipping-mark-field textarea {
+  height: 100%;
+}
+
+#intl .intl-editor label:has(textarea):not(.shipping-mark-field) {
   grid-column: span 2;
 }
 
@@ -794,7 +804,7 @@ input[type="file"] {
 .trade-line-head,
 .trade-line-row {
   display: grid;
-  grid-template-columns: 42px 1.1fr .7fr 1.5fr .7fr .7fr .7fr .7fr .7fr 42px;
+  grid-template-columns: 42px 1.1fr .72fr 1.35fr .72fr .72fr .78fr .82fr .72fr .72fr 42px;
   gap: 6px;
   align-items: center;
 }
@@ -833,6 +843,24 @@ input[type="file"] {
 .trade-line-row .small-btn {
   width: 34px;
   height: 34px;
+}
+
+.shared-field {
+  background: rgba(32, 220, 224, .08);
+}
+
+.invoice-field {
+  background: rgba(167, 53, 40, .08);
+}
+
+.packing-field {
+  background: rgba(31, 82, 124, .08);
+}
+
+.auto-field {
+  color: #1f527c;
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .trade-sheet {
@@ -1254,7 +1282,8 @@ tr:last-child td { border-bottom: 0; }
   .two-col { grid-template-columns: 1fr; }
   .account-editor { grid-template-columns: 1fr; }
   #intl .intl-editor { grid-template-columns: 1fr; }
-  #intl .intl-editor label:has(textarea) { grid-column: auto; }
+  #intl .intl-editor .shipping-mark-field,
+  #intl .intl-editor label:has(textarea) { grid-column: auto; grid-row: auto; }
   .trade-line-head { display: none; }
   .trade-line-row { grid-template-columns: 42px 1fr 1fr 42px; }
   .trade-line-row input[name="composition"] { grid-column: 2 / 4; }
