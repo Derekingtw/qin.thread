@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-02" />
+    <link rel="stylesheet" href="styles.css?v=20260503-03" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -54,7 +54,8 @@
         <button class="nav-item" data-view="contracts"><i data-lucide="file-signature"></i><span>合同</span></button>
         <button class="nav-item" data-view="leave"><i data-lucide="calendar-check"></i><span>請假申請</span></button>
         <button class="nav-item" data-view="approvals"><i data-lucide="stamp"></i><span>審批系統</span></button>
-        <button class="nav-item" data-view="payroll"><i data-lucide="wallet-cards"></i><span>薪資系統</span></button>
+        <button class="nav-item" data-view="payroll"><i data-lucide="wallet-cards"></i><span>會計系統</span></button>
+        <button class="nav-item" data-view="intl"><i data-lucide="ship"></i><span>國貿系統</span></button>
         <button class="nav-item" data-view="tracking"><i data-lucide="route"></i><span>貨品追蹤</span></button>
         <button class="nav-item" data-view="production"><i data-lucide="workflow"></i><span>生產圖</span></button>
         <button class="nav-item" data-view="settings"><i data-lucide="settings"></i><span>資料設定</span></button>
@@ -687,7 +688,7 @@
       </section>
 
       <section class="view" id="payroll">
-        <div class="section-tabs" role="tablist" aria-label="薪資系統分類">
+        <div class="section-tabs" role="tablist" aria-label="會計系統分類">
           <button class="section-tab active" data-payroll-tab="admin" type="button">行政薪資</button>
           <button class="section-tab" data-payroll-tab="live" type="button">直播薪資</button>
           <button class="section-tab" data-payroll-tab="partner" type="button">合夥人紅利</button>
@@ -753,6 +754,48 @@
             <div class="table-wrap"><table><thead><tr><th>姓名</th><th>性別</th><th>當月淨利潤</th><th>紅利</th><th>實領獎金</th><th>結算日</th><th></th></tr></thead><tbody id="partnerBonusRows"></tbody></table></div>
           </section>
         </div>
+      </section>
+
+      <section class="view" id="intl">
+        <div class="section-tabs" role="tablist" aria-label="國貿系統分類">
+          <button class="section-tab active" data-intl-tab="invoice" type="button">INVOICE</button>
+          <button class="section-tab" data-intl-tab="packing" type="button">PACKING</button>
+        </div>
+        <div class="workspace">
+          <form class="editor intl-editor" id="tradeForm">
+            <h2>INVOICE & PACKING</h2>
+            <input type="hidden" name="id" />
+            <label>流水編號<input readonly name="no" id="tradeNo" /></label>
+            <label>DATE<input required name="date" type="date" /></label>
+            <label>Company<input required name="company" placeholder="Yeonil Textile" /></label>
+            <label>Consignee<input name="consignee" placeholder="Ju, Kangbock" /></label>
+            <label>Phone<input name="phone" placeholder="82-2-2263-7117" /></label>
+            <label>Address<input name="address" /></label>
+            <label>FROM<input name="from" value="TAIWAN" /></label>
+            <label>PRODUCT<input name="product" value="YARN" /></label>
+            <label>TRANSACTION<input name="transaction" value="T/T" /></label>
+            <label>Shipping Mark<textarea name="shippingMark" rows="4" placeholder="HT&#10;(IN TRL)&#10;B/NO:1~31"></textarea></label>
+            <label>Deposit USD<input name="deposit" type="number" min="0" step="0.01" value="0" /></label>
+            <label>Total Value USD<input name="totalValue" type="number" min="0" step="0.01" value="0" /></label>
+            <div class="trade-lines">
+              <strong>商品明細</strong>
+              <div class="trade-line-head"><span>Yarn No.</span><span>Count</span><span>Composition</span><span>Color</span><span>N.W(KG)</span><span>G.W(KG)</span><span>Unit Price</span><span>Packages</span></div>
+              <div id="tradeLineInputs"></div>
+            </div>
+            <div class="form-actions">
+              <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存國貿單</span></button>
+              <button class="ghost-light-btn" data-reset-form="tradeForm" type="button"><i data-lucide="rotate-ccw"></i><span>清空</span></button>
+            </div>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>國貿單據</h2><span id="tradeDocCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>流水編號</th><th>DATE</th><th>Company</th><th>FROM</th><th>PRODUCT</th><th>Total N.W</th><th>Amount</th><th></th></tr></thead><tbody id="tradeDocRows"></tbody></table></div>
+          </section>
+        </div>
+        <section class="panel wide trade-preview-panel">
+          <div class="panel-head"><h2 id="tradePreviewTitle">COMMERCIAL INVOICE</h2><button class="ghost-light-btn" id="printTradeBtn" type="button"><i data-lucide="printer"></i><span>列印</span></button></div>
+          <div id="tradePreview" class="trade-sheet"></div>
+        </section>
       </section>
 
       <section class="view" id="settings">

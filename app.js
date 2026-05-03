@@ -1,6 +1,6 @@
 const STORAGE_KEY = "oa_inventory_state_v1";
 const SESSION_KEY = "oa_inventory_session_v1";
-const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "contracts", "leave", "approvals", "payroll", "tracking", "production", "settings"];
+const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "contracts", "leave", "approvals", "payroll", "intl", "tracking", "production", "settings"];
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -50,6 +50,7 @@ const defaultState = () => ({
   adminPayrolls: [],
   livePayrolls: [],
   partnerBonuses: [],
+  tradeDocs: [],
   announcements: [],
   settings: {
     positions: ["負責人", "主管", "執行負責", "品牌助理"],
@@ -69,6 +70,7 @@ let staffTab = "regular";
 let knitterTab = "profiles";
 let approvalTab = "overview";
 let payrollTab = "admin";
+let intlTab = "invoice";
 let currentUser = null;
 
 function loadState() {
@@ -110,7 +112,8 @@ function isMeaningfulState(value) {
       (value.sales || []).length ||
       (value.liveSales || []).length ||
       (value.knitters || []).length ||
-      (value.samples || []).length
+      (value.samples || []).length ||
+      (value.tradeDocs || []).length
     )
   );
 }
@@ -193,6 +196,16 @@ function normalizeState(saved) {
   next.adminPayrolls = (next.adminPayrolls || []).map((item) => ({ ...item, ...payrollNumbers(item) }));
   next.livePayrolls = (next.livePayrolls || []).map((item) => ({ ...item, ...payrollNumbers(item), commission: Number(item.commission || 0), netRevenue: Number(item.netRevenue || 0) }));
   next.partnerBonuses = (next.partnerBonuses || []).map((item) => ({ ...item, netProfit: Number(item.netProfit || 0), bonusRate: Number(item.bonusRate || 0), bonusAmount: Number(item.bonusAmount || 0) }));
+  next.tradeDocs = (next.tradeDocs || []).map((doc) => ({
+    ...doc,
+    lines: (doc.lines || []).map((line) => ({
+      ...line,
+      nw: Number(line.nw || 0),
+      gw: Number(line.gw || 0),
+      unitPrice: Number(line.unitPrice || 0),
+      packages: Number(line.packages || 0),
+    })),
+  }));
   return next;
 }
 
@@ -217,7 +230,7 @@ function permissionsForStaffRole(role) {
   if (normalized === "管理員") return [...ALL_VIEWS];
   if (normalized === "代理管理員") return ALL_VIEWS.filter((view) => view !== "settings");
   if (normalized === "核心人員") {
-    return ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "leave", "approvals", "payroll", "tracking", "production"];
+    return ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "leave", "approvals", "payroll", "intl", "tracking", "production"];
   }
   return ["dashboard", "products", "inventory", "sales", "liveSales", "leave"];
 }
@@ -1099,6 +1112,103 @@ function renderPayroll() {
   </tr>`).join("") || emptyRow(7);
 }
 
+function tradePrefix() {
+  const now = new Date();
+  return `MIT-${String(now.getFullYear()).slice(-2)}-${String(now.getMonth() + 1).padStart(2, "0")}-`;
+}
+
+function generateTradeNo(existingId = "") {
+  const prefix = tradePrefix();
+  const maxSeq = (state.tradeDocs || [])
+    .filter((doc) => doc.id !== existingId && doc.no?.startsWith(prefix))
+    .map((doc) => Number(doc.no.slice(prefix.length)))
+    .filter(Number.isFinite)
+    .reduce((max, seq) => Math.max(max, seq), 0);
+  return `${prefix}${String(maxSeq + 1).padStart(3, "0")}`;
+}
+
+function tradeTotals(lines = []) {
+  return lines.reduce((totals, line) => ({
+    nw: totals.nw + Number(line.nw || 0),
+    gw: totals.gw + Number(line.gw || 0),
+    amount: totals.amount + Number(line.nw || 0) * Number(line.unitPrice || 0),
+  }), { nw: 0, gw: 0, amount: 0 });
+}
+
+function renderTradeLineInputs(lines = []) {
+  const rows = Array.from({ length: 10 }, (_, index) => lines[index] || {});
+  $("#tradeLineInputs").innerHTML = rows.map((line) => `<div class="trade-line-row">
+    <input name="yarnNo" value="${escapeHtml(line.yarnNo || "")}" placeholder="H-28956" />
+    <input name="count" value="${escapeHtml(line.count || "")}" placeholder="35MM" />
+    <input name="composition" value="${escapeHtml(line.composition || "")}" placeholder="VISCOSE100%" />
+    <input name="color" value="${escapeHtml(line.color || "")}" placeholder="#105" />
+    <input name="nw" type="number" min="0" step="0.01" value="${line.nw || ""}" />
+    <input name="gw" type="number" min="0" step="0.01" value="${line.gw || ""}" />
+    <input name="unitPrice" type="number" min="0" step="0.01" value="${line.unitPrice || ""}" />
+    <input name="packages" type="number" min="0" step="1" value="${line.packages || ""}" />
+  </div>`).join("");
+}
+
+function activeTradeDoc() {
+  return (state.tradeDocs || [])[0] || null;
+}
+
+function tradeCell(value) {
+  return escapeHtml(value || "");
+}
+
+function renderTradeSheet(doc, mode = intlTab) {
+  if (!doc) return `<p class="empty">尚無國貿單據</p>`;
+  const lines = Array.from({ length: 20 }, (_, index) => doc.lines?.[index] || {});
+  const totals = tradeTotals(doc.lines || []);
+  const isPacking = mode === "packing";
+  const title = isPacking ? "COMMERCIAL PACKING" : "COMMERCIAL INVOICE";
+  $("#tradePreviewTitle").textContent = title;
+  return `<div class="trade-document ${isPacking ? "packing" : ""}">
+    <div class="trade-doc-title">${title}</div>
+    <div class="trade-doc-meta">NO: ${tradeCell(doc.no)}</div>
+    <div class="trade-info-grid">
+      <div class="trade-box buyer">
+        <h3>${isPacking ? "BUYER (Linked from Invoice)" : "BUYER INFORMATION"}</h3>
+        <p><b>Company:</b><span>${tradeCell(doc.company)}</span></p>
+        <p><b>Consignee:</b><span>${tradeCell(doc.consignee)}</span></p>
+        <p><b>Phone:</b><span>${tradeCell(doc.phone)}</span></p>
+        <p><b>Address:</b><span>${tradeCell(doc.address)}</span></p>
+      </div>
+      <div class="trade-box traffic">
+        <h3>Traffic information</h3>
+        <p><b>DATE:</b><span>${tradeCell(doc.date?.replaceAll("-", "/"))}</span></p>
+        <p><b>FROM:</b><span>${tradeCell(doc.from)}</span></p>
+        <p><b>PRODUCT:</b><span>${tradeCell(doc.product)}</span></p>
+        <p><b>TRANSACTION:</b><span>${tradeCell(doc.transaction)}</span></p>
+      </div>
+      <div class="trade-box mark">
+        <h3>Shipping Mark:</h3>
+        <pre>${tradeCell(doc.shippingMark)}</pre>
+      </div>
+    </div>
+    <table class="trade-doc-table">
+      <thead><tr><th>No.</th><th>Yarn No.</th><th>Count</th><th>Composition</th><th>Color</th><th>N.W(KG)</th>${isPacking ? "<th>G.W(KG)</th><th>Packages</th>" : "<th>Unit Price</th><th>Amount</th>"}</tr></thead>
+      <tbody>${lines.map((line, index) => {
+        const amount = Number(line.nw || 0) * Number(line.unitPrice || 0);
+        return `<tr><td>${index + 1}</td><td>${tradeCell(line.yarnNo)}</td><td>${tradeCell(line.count)}</td><td>${tradeCell(line.composition)}</td><td>${tradeCell(line.color)}</td><td>${number(line.nw || 0)}</td>${isPacking ? `<td>${number(line.gw || 0)}</td><td>${line.packages ? number(line.packages) : ""}</td>` : `<td>${line.unitPrice ? number(line.unitPrice) : ""}</td><td>${amount ? number(amount) : "0"}</td>`}</tr>`;
+      }).join("")}</tbody>
+      <tfoot><tr><td colspan="5">TOTAL:</td><td>${number(totals.nw)}</td>${isPacking ? `<td>${number(totals.gw)}</td><td></td>` : `<td></td><td>${number(totals.amount)}</td>`}</tr></tfoot>
+    </table>
+    ${isPacking ? "" : `<div class="trade-summary-boxes"><div><h3>Deposit</h3><p>USD <b>${number(doc.deposit || 0)}</b></p></div><div><h3>Total Value</h3><p>USD <b>${number(doc.totalValue || Math.max(0, totals.amount - Number(doc.deposit || 0)))}</b></p></div></div>`}
+  </div>`;
+}
+
+function renderIntl() {
+  const docs = currentRows(state.tradeDocs || []).sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+  $("#tradeDocCount").textContent = `${docs.length} 筆`;
+  $("#tradeDocRows").innerHTML = docs.map((doc) => {
+    const totals = tradeTotals(doc.lines || []);
+    return `<tr><td>${doc.no}</td><td>${doc.date || "-"}</td><td>${doc.company || "-"}</td><td>${doc.from || "-"}</td><td>${doc.product || "-"}</td><td class="num">${number(totals.nw)}</td><td class="num">${number(totals.amount)}</td><td>${rowActions("tradeDoc", doc.id, true)}</td></tr>`;
+  }).join("") || emptyRow(8);
+  $("#tradePreview").innerHTML = renderTradeSheet(docs[0] || activeTradeDoc(), intlTab);
+}
+
 function renderAll() {
   syncSelects();
   renderDashboard();
@@ -1117,6 +1227,7 @@ function renderAll() {
   renderLeave();
   renderApprovals();
   renderPayroll();
+  renderIntl();
   renderSettings();
   if (window.lucide) window.lucide.createIcons();
   if (currentLang === "zh-CN") applyLanguage();
@@ -1166,6 +1277,12 @@ function setPayrollTab(tab) {
   $$("[data-payroll-tab]").forEach((button) => button.classList.toggle("active", button.dataset.payrollTab === tab));
   $$("[data-payroll-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.payrollPanel === tab));
   renderPayroll();
+}
+
+function setIntlTab(tab) {
+  intlTab = tab;
+  $$("[data-intl-tab]").forEach((button) => button.classList.toggle("active", button.dataset.intlTab === tab));
+  renderIntl();
 }
 
 function setAuthTab(tab) {
@@ -1246,6 +1363,14 @@ function resetForm(form) {
     if (form.id === "adminPayrollForm") updateAdminPayrollCalc();
     if (form.id === "livePayrollForm") updateLivePayrollCalc();
     if (form.id === "partnerBonusForm") updatePartnerBonusCalc();
+  }
+  if (form.id === "tradeForm") {
+    form.elements.no.value = generateTradeNo();
+    form.elements.date.value = today();
+    form.elements.from.value = "TAIWAN";
+    form.elements.product.value = "YARN";
+    form.elements.transaction.value = "T/T";
+    renderTradeLineInputs();
   }
 }
 
@@ -1494,7 +1619,7 @@ function deleteItem(type, id) {
       ? state.purchases.some((doc) => doc.partnerId === id) || state.sales.some((doc) => doc.partnerId === id)
       : false;
   if (hasDoc) return toast("已有單據使用，請保留資料");
-  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses" };
+  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs" };
   state[map[type]] = state[map[type]].filter((item) => item.id !== id);
   saveState();
   toast("資料已刪除");
@@ -1671,6 +1796,45 @@ function addLiveSale(form) {
   renderAll();
 }
 
+function addTradeDoc(form) {
+  const data = Object.fromEntries(new FormData(form));
+  const formData = new FormData(form);
+  const yarnNos = formData.getAll("yarnNo");
+  const lines = yarnNos.map((_, index) => ({
+    yarnNo: formData.getAll("yarnNo")[index]?.trim() || "",
+    count: formData.getAll("count")[index]?.trim() || "",
+    composition: formData.getAll("composition")[index]?.trim() || "",
+    color: formData.getAll("color")[index]?.trim() || "",
+    nw: Number(formData.getAll("nw")[index] || 0),
+    gw: Number(formData.getAll("gw")[index] || 0),
+    unitPrice: Number(formData.getAll("unitPrice")[index] || 0),
+    packages: Number(formData.getAll("packages")[index] || 0),
+  })).filter((line) => line.yarnNo || line.count || line.composition || line.color || line.nw || line.gw || line.unitPrice || line.packages);
+  if (!lines.length) return toast("請至少填寫一筆商品明細");
+  const doc = {
+    id: data.id || uid("trade"),
+    no: data.no || generateTradeNo(data.id),
+    date: data.date,
+    company: data.company.trim(),
+    consignee: data.consignee.trim(),
+    phone: data.phone.trim(),
+    address: data.address.trim(),
+    from: data.from.trim(),
+    product: data.product.trim(),
+    transaction: data.transaction.trim(),
+    shippingMark: data.shippingMark.trim(),
+    deposit: Number(data.deposit || 0),
+    totalValue: Number(data.totalValue || 0),
+    lines,
+    createdAt: data.id ? (state.tradeDocs.find((item) => item.id === data.id)?.createdAt || Date.now()) : Date.now(),
+  };
+  state.tradeDocs = data.id ? state.tradeDocs.map((item) => item.id === data.id ? doc : item) : [doc, ...(state.tradeDocs || [])];
+  saveState();
+  resetForm(form);
+  toast("國貿單據已儲存");
+  renderAll();
+}
+
 function upsertPosition(form) {
   const data = Object.fromEntries(new FormData(form));
   const name = data.name.trim();
@@ -1816,6 +1980,12 @@ function editItem(type, id) {
     setPositionEditMode(true);
     form.elements.name.focus();
   }
+  if (type === "tradeDoc") {
+    const doc = state.tradeDocs.find((item) => item.id === id);
+    fillForm($("#tradeForm"), doc);
+    renderTradeLineInputs(doc?.lines || []);
+    setView("intl");
+  }
 }
 
 function escapeHtml(value) {
@@ -1872,7 +2042,8 @@ function reportContent(view) {
     staff: "人事資料報表",
     leave: "請假申請報表",
     approvals: "審批系統報表",
-    payroll: "薪資系統報表",
+    payroll: "會計系統報表",
+    intl: "國貿系統報表",
     settings: "資料設定報表",
   };
   const saleProducts = state.products.filter((product) => product.type === "sale");
@@ -1927,6 +2098,7 @@ function reportContent(view) {
       ...(state.livePayrolls || []).map((p) => ["直播薪資", staffName(p.staffId), p.gender || staffGender(p.staffId), money(p.baseSalary), `${number(p.commission)}%`, money(p.netSalary)]),
       ...(state.partnerBonuses || []).map((p) => ["合夥人紅利", staffName(p.staffId), p.gender || staffGender(p.staffId), money(p.netProfit), `${number(p.bonusRate)}%`, money(p.bonusAmount)]),
     ]),
+    intl: () => reportTable(["流水編號", "DATE", "Company", "FROM", "PRODUCT", "N.W(KG)", "Amount"], (state.tradeDocs || []).map((doc) => { const totals = tradeTotals(doc.lines || []); return [doc.no, doc.date, doc.company, doc.from, doc.product, number(totals.nw), number(totals.amount)]; })),
     settings: () => reportTable(["職位名稱"], (state.settings?.positions || []).map((name) => [name])),
   };
 
@@ -2090,6 +2262,7 @@ function bindEvents() {
   $$("[data-knitter-tab]").forEach((button) => button.addEventListener("click", () => setKnitterTab(button.dataset.knitterTab)));
   $$("[data-approval-tab]").forEach((button) => button.addEventListener("click", () => setApprovalTab(button.dataset.approvalTab)));
   $$("[data-payroll-tab]").forEach((button) => button.addEventListener("click", () => setPayrollTab(button.dataset.payrollTab)));
+  $$("[data-intl-tab]").forEach((button) => button.addEventListener("click", () => setIntlTab(button.dataset.intlTab)));
   $$("[data-setting-tab]").forEach((button) => button.addEventListener("click", () => setSettingTab(button.dataset.settingTab)));
   $$("[data-staff-tab]").forEach((button) => button.addEventListener("click", () => setStaffTab(button.dataset.staffTab)));
   $$("[data-auth-tab]").forEach((button) => button.addEventListener("click", () => setAuthTab(button.dataset.authTab)));
@@ -2177,6 +2350,11 @@ function bindEvents() {
     event.preventDefault();
     addLiveSale(event.currentTarget);
   });
+  $("#tradeForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addTradeDoc(event.currentTarget);
+  });
+  $("#printTradeBtn").addEventListener("click", () => window.print());
   $("#knitterForm").addEventListener("submit", (event) => {
     event.preventDefault();
     addKnitter(event.currentTarget);
@@ -2304,6 +2482,7 @@ async function init() {
   resetForm($("#liveForm"));
   resetForm($("#shipmentForm"));
   resetForm($("#liveSaleForm"));
+  resetForm($("#tradeForm"));
   resetForm($("#knitterForm"));
   resetForm($("#sampleForm"));
   resetForm($("#staffForm"));
