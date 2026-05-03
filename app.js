@@ -1,7 +1,7 @@
 const STORAGE_KEY = "oa_inventory_state_v1";
 const SESSION_KEY = "oa_inventory_session_v1";
 const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "contracts", "leave", "approvals", "payroll", "intl", "tracking", "production", "growth", "settings"];
-const ERP_VIEWS = ["products", "inventory", "purchases", "sales", "shipping"];
+const ERP_VIEWS = ["products", "partners", "inventory", "purchases", "sales", "shipping", "tracking", "production"];
 const LIVE_SYSTEM_VIEWS = ["live", "liveSales"];
 
 const $ = (selector) => document.querySelector(selector);
@@ -77,6 +77,7 @@ let payrollTab = "admin";
 let intlTab = "setup";
 let tradeLineDrafts = [];
 let activeTradeDocId = "";
+let editingStaffId = "";
 let currentUser = null;
 
 function loadState() {
@@ -1544,6 +1545,7 @@ function fillForm(form, data) {
   if (form.id === "staffForm") {
     form.elements.role.value = normalizeStaffRole(form.elements.role.value);
     if (form.elements.accountPassword) form.elements.accountPassword.value = "";
+    editingStaffId = form.elements.id?.value || "";
     setStaffEditMode(Boolean(form.elements.id?.value));
     renderImagePreview("staffAvatarPreview", form.elements.avatarData?.value || "");
   }
@@ -1575,6 +1577,7 @@ function resetForm(form) {
     form.elements.nationality.value = "台灣";
   }
   if (form.id === "staffForm") {
+    editingStaffId = "";
     form.elements.avatarData.value = "";
     renderImagePreview("staffAvatarPreview", "");
     setStaffTab(staffTab);
@@ -1812,6 +1815,7 @@ function addStaff(form) {
 }
 
 function updateStaff(form) {
+  if (!form.elements.id.value && editingStaffId) form.elements.id.value = editingStaffId;
   if (!form.elements.id.value) return toast("請先點選人事資料清單中的編輯");
   upsertStaff(form);
 }
@@ -2226,8 +2230,11 @@ function editItem(type, id) {
   }
   if (type === "staff") {
     const staff = state.staff.find((item) => item.id === id);
+    editingStaffId = id;
     setStaffTab(staff?.employeeType || "regular");
     fillForm($("#staffForm"), staff);
+    $("#staffForm").elements.id.value = id;
+    setStaffEditMode(true);
     setView("staff");
   }
   if (type === "position") {

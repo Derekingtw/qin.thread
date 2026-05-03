@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-10" />
+    <link rel="stylesheet" href="styles.css?v=20260503-11" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -44,15 +44,12 @@
         <button class="nav-item" data-view="products"><i data-lucide="blocks"></i><span>ERP系統</span></button>
         <button class="nav-item" data-view="live"><i data-lucide="radio"></i><span>直播系統</span></button>
         <button class="nav-item" data-view="knitters"><i data-lucide="shirt"></i><span>織女系統</span></button>
-        <button class="nav-item" data-view="partners"><i data-lucide="users"></i><span>往來單位</span></button>
         <button class="nav-item" data-view="staff"><i data-lucide="id-card"></i><span>人事資料</span></button>
         <button class="nav-item" data-view="contracts"><i data-lucide="file-signature"></i><span>合同</span></button>
         <button class="nav-item" data-view="leave"><i data-lucide="calendar-check"></i><span>請假申請</span></button>
         <button class="nav-item" data-view="approvals"><i data-lucide="stamp"></i><span>審批系統</span></button>
         <button class="nav-item" data-view="payroll"><i data-lucide="wallet-cards"></i><span>會計系統</span></button>
         <button class="nav-item" data-view="intl"><i data-lucide="ship"></i><span>國貿系統</span></button>
-        <button class="nav-item" data-view="tracking"><i data-lucide="route"></i><span>貨品追蹤</span></button>
-        <button class="nav-item" data-view="production"><i data-lucide="workflow"></i><span>生產圖</span></button>
         <button class="nav-item" data-view="growth"><i data-lucide="badge-check"></i><span>養成系統</span></button>
         <button class="nav-item" data-view="settings"><i data-lucide="settings"></i><span>資料設定</span></button>
       </nav>
@@ -182,10 +179,13 @@
       <section class="view" id="products">
         <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
           <button class="section-tab active" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab" data-system-tab="partners" type="button">往來單位</button>
           <button class="section-tab" data-system-tab="inventory" type="button">庫存</button>
           <button class="section-tab" data-system-tab="purchases" type="button">進貨</button>
           <button class="section-tab" data-system-tab="sales" type="button">銷貨</button>
           <button class="section-tab" data-system-tab="shipping" type="button">出貨單</button>
+          <button class="section-tab" data-system-tab="tracking" type="button">貨品追蹤</button>
+          <button class="section-tab" data-system-tab="production" type="button">生產圖</button>
         </div>
         <div class="section-tabs" role="tablist" aria-label="商品分類">
           <button class="section-tab active" data-product-tab="saleGoods" type="button">銷售產品</button>
@@ -254,6 +254,16 @@
       </section>
 
       <section class="view" id="partners">
+        <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
+          <button class="section-tab" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab active" data-system-tab="partners" type="button">往來單位</button>
+          <button class="section-tab" data-system-tab="inventory" type="button">庫存</button>
+          <button class="section-tab" data-system-tab="purchases" type="button">進貨</button>
+          <button class="section-tab" data-system-tab="sales" type="button">銷貨</button>
+          <button class="section-tab" data-system-tab="shipping" type="button">出貨單</button>
+          <button class="section-tab" data-system-tab="tracking" type="button">貨品追蹤</button>
+          <button class="section-tab" data-system-tab="production" type="button">生產圖</button>
+        </div>
         <div class="workspace">
           <form class="editor" id="partnerForm">
             <h2>往來單位</h2>
@@ -286,10 +296,13 @@
       <section class="view" id="purchases">
         <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
           <button class="section-tab" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab" data-system-tab="partners" type="button">往來單位</button>
           <button class="section-tab" data-system-tab="inventory" type="button">庫存</button>
           <button class="section-tab active" data-system-tab="purchases" type="button">進貨</button>
           <button class="section-tab" data-system-tab="sales" type="button">銷貨</button>
           <button class="section-tab" data-system-tab="shipping" type="button">出貨單</button>
+          <button class="section-tab" data-system-tab="tracking" type="button">貨品追蹤</button>
+          <button class="section-tab" data-system-tab="production" type="button">生產圖</button>
         </div>
         <div class="workspace">
           <form class="editor" id="purchaseForm">
@@ -320,10 +333,13 @@
       <section class="view" id="sales">
         <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
           <button class="section-tab" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab" data-system-tab="partners" type="button">往來單位</button>
           <button class="section-tab" data-system-tab="inventory" type="button">庫存</button>
           <button class="section-tab" data-system-tab="purchases" type="button">進貨</button>
           <button class="section-tab active" data-system-tab="sales" type="button">銷貨</button>
           <button class="section-tab" data-system-tab="shipping" type="button">出貨單</button>
+          <button class="section-tab" data-system-tab="tracking" type="button">貨品追蹤</button>
+          <button class="section-tab" data-system-tab="production" type="button">生產圖</button>
         </div>
         <div class="workspace">
           <form class="editor" id="saleForm">
@@ -354,10 +370,13 @@
       <section class="view" id="inventory">
         <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
           <button class="section-tab" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab" data-system-tab="partners" type="button">往來單位</button>
           <button class="section-tab active" data-system-tab="inventory" type="button">庫存</button>
           <button class="section-tab" data-system-tab="purchases" type="button">進貨</button>
           <button class="section-tab" data-system-tab="sales" type="button">銷貨</button>
           <button class="section-tab" data-system-tab="shipping" type="button">出貨單</button>
+          <button class="section-tab" data-system-tab="tracking" type="button">貨品追蹤</button>
+          <button class="section-tab" data-system-tab="production" type="button">生產圖</button>
         </div>
         <section class="panel">
           <div class="panel-head">
@@ -374,6 +393,16 @@
       </section>
 
       <section class="view" id="tracking">
+        <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
+          <button class="section-tab" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab" data-system-tab="partners" type="button">往來單位</button>
+          <button class="section-tab" data-system-tab="inventory" type="button">庫存</button>
+          <button class="section-tab" data-system-tab="purchases" type="button">進貨</button>
+          <button class="section-tab" data-system-tab="sales" type="button">銷貨</button>
+          <button class="section-tab" data-system-tab="shipping" type="button">出貨單</button>
+          <button class="section-tab active" data-system-tab="tracking" type="button">貨品追蹤</button>
+          <button class="section-tab" data-system-tab="production" type="button">生產圖</button>
+        </div>
         <div class="workspace">
           <form class="editor" id="trackingForm">
             <h2>貨品追蹤</h2>
@@ -401,6 +430,16 @@
       </section>
 
       <section class="view" id="production">
+        <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
+          <button class="section-tab" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab" data-system-tab="partners" type="button">往來單位</button>
+          <button class="section-tab" data-system-tab="inventory" type="button">庫存</button>
+          <button class="section-tab" data-system-tab="purchases" type="button">進貨</button>
+          <button class="section-tab" data-system-tab="sales" type="button">銷貨</button>
+          <button class="section-tab" data-system-tab="shipping" type="button">出貨單</button>
+          <button class="section-tab" data-system-tab="tracking" type="button">貨品追蹤</button>
+          <button class="section-tab active" data-system-tab="production" type="button">生產圖</button>
+        </div>
         <section class="panel">
           <div class="panel-head"><h2>生產流程看板</h2><span id="productionCount" class="pill">0 批次</span></div>
           <div class="table-wrap"><table><thead><tr><th>追蹤編號</th><th>品名</th><th>目前進度</th><th>胚紗</th><th>染色</th><th>打包</th><th>完成</th><th>預計完成</th><th>剩餘天數</th><th>風險</th></tr></thead><tbody id="productionRows"></tbody></table></div>
@@ -438,10 +477,13 @@
       <section class="view" id="shipping">
         <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
           <button class="section-tab" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab" data-system-tab="partners" type="button">往來單位</button>
           <button class="section-tab" data-system-tab="inventory" type="button">庫存</button>
           <button class="section-tab" data-system-tab="purchases" type="button">進貨</button>
           <button class="section-tab" data-system-tab="sales" type="button">銷貨</button>
           <button class="section-tab active" data-system-tab="shipping" type="button">出貨單</button>
+          <button class="section-tab" data-system-tab="tracking" type="button">貨品追蹤</button>
+          <button class="section-tab" data-system-tab="production" type="button">生產圖</button>
         </div>
         <div class="workspace">
           <form class="editor" id="shipmentForm">
@@ -914,6 +956,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260503-14"></script>
+    <script src="app.js?v=20260503-15"></script>
   </body>
 </html>
