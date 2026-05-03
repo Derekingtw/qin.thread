@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-13" />
+    <link rel="stylesheet" href="styles.css?v=20260503-14" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -917,10 +917,9 @@
             <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增紀錄</span></button>
           </form>
           <form class="editor" id="growthLevelForm">
-            <h2>等級名稱設定</h2>
-            <label>等級<select required name="level" id="growthLevelSelect"></select></label>
-            <label>等級名稱<input required name="name" placeholder="例如：青銅織手、核心主管" /></label>
-            <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存名稱</span></button>
+            <h2>等級名稱批量設定</h2>
+            <div class="level-name-grid" id="growthLevelNameGrid"></div>
+            <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>批量儲存名稱</span></button>
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2>人員成長檔案</h2><span id="growthProfileCount" class="pill">0 人</span></div>
@@ -967,6 +966,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260503-17"></script>
+    <script src="app.js?v=20260503-18"></script>
   </body>
 </html>

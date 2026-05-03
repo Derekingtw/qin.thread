@@ -590,7 +590,7 @@ input[type="file"] {
 
 .permission-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 8px;
   margin-top: 12px;
   min-width: 0;
@@ -602,7 +602,8 @@ input[type="file"] {
   gap: 7px;
   color: var(--ink);
   min-width: 0;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.25;
 }
 
 .permission-grid input {
@@ -1053,6 +1054,38 @@ input[type="file"] {
   margin: 10px 0 0;
   color: #5e2119;
   font-weight: 800;
+}
+
+.growth-source {
+  display: block;
+  margin-top: 6px;
+  color: #5f574d;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.level-name-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  max-height: 420px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid rgba(32, 220, 224, .24);
+  border-radius: 8px;
+  background: rgba(255, 253, 247, .62);
+}
+
+.level-name-grid label {
+  display: grid;
+  gap: 5px;
+}
+
+.level-name-grid span {
+  color: #7b211a;
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .trade-sheet {

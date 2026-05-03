@@ -4,6 +4,7 @@ const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "
 const ERP_VIEWS = ["products", "partners", "inventory", "purchases", "sales", "shipping", "tracking", "production", "contracts"];
 const ERP_TAB_LABELS = { products: "商品", partners: "往來單位", inventory: "庫存", purchases: "進貨", sales: "銷貨", shipping: "出貨單", tracking: "貨品追蹤", production: "生產圖", contracts: "合同" };
 const LIVE_SYSTEM_VIEWS = ["live", "liveSales"];
+const VIEW_LABELS = { dashboard: "總覽", knitters: "織女系統", staff: "人事資料", leave: "請假申請", approvals: "審批系統", payroll: "會計系統", intl: "國貿系統", growth: "養成系統", settings: "資料設定" };
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -537,11 +538,12 @@ function positionOptions(select) {
   select.innerHTML = (state.settings?.positions || []).map((name) => `<option value="${name}">${name}</option>`).join("") || `<option value="">請先建立職位</option>`;
 }
 
-function growthLevelOptions(select) {
-  if (!select) return;
-  select.innerHTML = Array.from({ length: MAX_GROWTH_LEVEL }, (_, index) => {
+function renderGrowthLevelNameInputs() {
+  const target = $("#growthLevelNameGrid");
+  if (!target) return;
+  target.innerHTML = Array.from({ length: MAX_GROWTH_LEVEL }, (_, index) => {
     const level = index + 1;
-    return `<option value="${level}">Lv.${level} ${growthLevelName(level)}</option>`;
+    return `<label><span>Lv.${level}</span><input name="level_${level}" value="${escapeHtml(growthLevelName(level))}" /></label>`;
   }).join("");
 }
 
@@ -589,6 +591,18 @@ function staffXp(staffId) {
   return Math.max(0, (state.growthRecords || []).filter((record) => record.staffId === staffId).reduce((sum, record) => sum + Number(record.xp || 0), 0));
 }
 
+function tenureXp(staff) {
+  if (!staff?.joinDate || staff.status === "離職") return 0;
+  const start = new Date(`${staff.joinDate}T00:00:00`);
+  const now = new Date(`${today()}T00:00:00`);
+  const days = Math.max(0, Math.floor((now - start) / 86400000) + 1);
+  return days * 2;
+}
+
+function totalStaffXp(staff) {
+  return staffXp(staff?.id) + tenureXp(staff);
+}
+
 function growthLevel(xp) {
   const level = Math.min(MAX_GROWTH_LEVEL, Math.floor(Math.max(0, xp) / XP_PER_LEVEL) + 1);
   const currentMin = (level - 1) * XP_PER_LEVEL;
@@ -609,7 +623,7 @@ function currentUserStaff() {
 function updateLoginGrowthStrip() {
   const staff = currentUserStaff();
   const name = staff?.name || currentUser?.name || "未登入";
-  const xp = staff ? staffXp(staff.id) : 0;
+  const xp = staff ? totalStaffXp(staff) : 0;
   const level = growthLevel(xp);
   const nameEl = $("#loginUserName");
   if (!nameEl) return;
@@ -698,7 +712,7 @@ function syncSelects() {
   partnerOptions($("#shipmentPartner"), "customer");
   liveShowOptions($("#liveSaleShow"));
   positionOptions($("#staffTitle"));
-  growthLevelOptions($("#growthLevelSelect"));
+  renderGrowthLevelNameInputs();
   ["leaveStaff", "tripStaff", "purchaseRequestStaff", "proposalStaff", "growthStaff"].forEach((id) => staffOptions($(`#${id}`)));
   ["adminPayrollStaff", "livePayrollStaff", "partnerBonusStaff"].forEach((id) => staffOptions($(`#${id}`)));
   ["leaveApprover", "tripApprover", "purchaseRequestApprover", "proposalApprover"].forEach((id) => staffOptions($(`#${id}`), true));
@@ -1094,7 +1108,7 @@ function renderSettings() {
     <article class="permission-card">
       <div><strong>${user.name}</strong><span>${user.phone || user.username} · ${user.systemRole || (user.role === "admin" ? "管理員" : "普通人員")}</span></div>
       <div class="permission-grid">
-        ${ALL_VIEWS.map((view) => `<label><input type="checkbox" data-permission-user="${user.id}" value="${view}" ${user.role === "admin" || (user.permissions || []).includes(view) ? "checked" : ""} ${user.role === "admin" ? "disabled" : ""}>${viewLabel(view)}</label>`).join("")}
+        ${ALL_VIEWS.map((view) => `<label><input type="checkbox" data-permission-user="${user.id}" value="${view}" ${user.role === "admin" || (user.permissions || []).includes(view) ? "checked" : ""} ${user.role === "admin" ? "disabled" : ""}>${permissionLabel(view)}</label>`).join("")}
       </div>
     </article>
   `).join("") || `<p class="empty">尚無帳號</p>`;
@@ -1103,7 +1117,13 @@ function renderSettings() {
 function viewLabel(view) {
   if (ERP_VIEWS.includes(view)) return "ERP系統";
   if (LIVE_SYSTEM_VIEWS.includes(view)) return "直播系統";
-  return $(`.nav-item[data-view="${view}"] span`)?.textContent || view;
+  return VIEW_LABELS[view] || $(`.nav-item[data-view="${view}"] span`)?.textContent || view;
+}
+
+function permissionLabel(view) {
+  if (ERP_VIEWS.includes(view)) return `ERP系統 / ${ERP_TAB_LABELS[view]}`;
+  if (LIVE_SYSTEM_VIEWS.includes(view)) return `直播系統 / ${view === "live" ? "直播對應" : "直播間銷售"}`;
+  return VIEW_LABELS[view] || viewLabel(view);
 }
 
 function ensureErpTabs() {
@@ -1126,13 +1146,16 @@ function renderGrowth() {
   const staffRows = currentRows(state.staff || []).filter((item) => item.status !== "離職");
   $("#growthProfileCount").textContent = `${staffRows.length} 人`;
   $("#growthProfiles").innerHTML = staffRows.map((staff) => {
-    const xp = staffXp(staff.id);
+    const recordXp = staffXp(staff.id);
+    const workXp = tenureXp(staff);
+    const xp = recordXp + workXp;
     const level = growthLevel(xp);
     const nextText = level.next ? `距離 Lv.${level.next.index} ${level.next.name} 還差 ${number(level.next.min - xp)} EXP` : "已達最高等級";
     return `<article class="growth-card">
       <div class="growth-card-head">${avatarMarkup(staff)}<div><strong>${staff.name}</strong><small>${staff.title || "待補職位"} · ${staff.dept || "待補部門"}</small></div><span>Lv.${level.index} ${level.name}</span></div>
       <div class="growth-progress"><i style="width:${level.progress}%"></i></div>
       <div class="growth-meta"><span>${number(xp)} EXP</span><b>${level.progress}%</b></div>
+      <small class="growth-source">紀錄 ${number(recordXp)} EXP · 在職 ${number(workXp)} EXP</small>
       <p>${nextText}</p>
     </article>`;
   }).join("") || `<p class="empty">尚無人事資料</p>`;
@@ -1602,8 +1625,7 @@ function resetForm(form) {
     setStaffEditMode(false);
   }
   if (form.id === "growthLevelForm") {
-    form.elements.level.value = "1";
-    form.elements.name.value = growthLevelName(1);
+    renderGrowthLevelNameInputs();
   }
   if (form.id === "positionForm") {
     form.elements.oldName.value = "";
@@ -1919,15 +1941,17 @@ function addGrowthRecord(form) {
 }
 
 function saveGrowthLevelName(form) {
-  const data = Object.fromEntries(new FormData(form));
-  const level = Math.min(MAX_GROWTH_LEVEL, Math.max(1, Number(data.level || 1)));
-  const name = data.name.trim();
-  if (!name) return toast("請輸入等級名稱");
-  state.settings.growthLevelNames = { ...(state.settings.growthLevelNames || {}), [level]: name };
+  const formData = new FormData(form);
+  const names = {};
+  for (let level = 1; level <= MAX_GROWTH_LEVEL; level += 1) {
+    const name = String(formData.get(`level_${level}`) || "").trim();
+    if (name) names[level] = name;
+  }
+  if (!Object.keys(names).length) return toast("請至少輸入一個等級名稱");
+  state.settings.growthLevelNames = names;
   saveState();
-  growthLevelOptions($("#growthLevelSelect"));
-  $("#growthLevelSelect").value = String(level);
-  toast(`Lv.${level} 名稱已儲存`);
+  renderGrowthLevelNameInputs();
+  toast("等級名稱已批量儲存");
   renderAll();
 }
 
@@ -2722,9 +2746,6 @@ function bindEvents() {
   $("#growthLevelForm").addEventListener("submit", (event) => {
     event.preventDefault();
     saveGrowthLevelName(event.currentTarget);
-  });
-  $("#growthLevelSelect").addEventListener("change", (event) => {
-    $("#growthLevelForm").elements.name.value = growthLevelName(Number(event.target.value));
   });
   $("#adminPayrollForm").addEventListener("submit", (event) => {
     event.preventDefault();
