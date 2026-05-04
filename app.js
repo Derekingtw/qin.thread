@@ -1182,7 +1182,7 @@ function renderKnitters() {
       <td>${number(item.leadTime)} 天</td>
       <td>${item.tutorialAvailable || "-"}</td>
       <td>${item.settlementDate || "-"}</td>
-      <td>${rowActions("knitter", item.id)}</td>
+      <td>${rowActions("knitter", item.id, true)}</td>
     </tr>`;
   }).join("") || emptyRow(13);
 
@@ -2488,8 +2488,9 @@ function addKnitter(form) {
   const styles = new FormData(form).getAll("styles");
   if (!styles.length) return toast("請至少選擇一個樣衣款式");
   const prices = Object.fromEntries(styles.map((style) => [style, Number(data[`price_${style}`] || 0)]));
-  state.knitters = [...(state.knitters || []), {
-    id: uid("knitter"),
+  const existing = data.id ? (state.knitters || []).find((item) => item.id === data.id) : null;
+  const payload = {
+    id: data.id || uid("knitter"),
     contractDate: data.contractDate,
     name: data.name.trim(),
     identityCode: data.identityCode?.trim() || "",
@@ -2502,11 +2503,14 @@ function addKnitter(form) {
     leadTime: Number(data.leadTime || 0),
     tutorialAvailable: data.tutorialAvailable,
     settlementDate: data.settlementDate,
-    createdAt: Date.now(),
-  }];
+    createdAt: existing?.createdAt || Date.now(),
+  };
+  state.knitters = data.id
+    ? (state.knitters || []).map((item) => item.id === data.id ? payload : item)
+    : [...(state.knitters || []), payload];
   saveState();
   resetForm(form);
-  toast("織女資料已新增");
+  toast(data.id ? "織女資料已修改" : "織女資料已新增");
   renderAll();
 }
 
@@ -2543,6 +2547,22 @@ function updateSampleLeadDays() {
   if (form.elements.leadDays.value) return;
   const knitter = findKnitter(form.elements.knitterId.value);
   if (knitter?.leadTime) form.elements.leadDays.value = knitter.leadTime;
+}
+
+function fillKnitterForm(knitter) {
+  const form = $("#knitterForm");
+  if (!form || !knitter) return;
+  resetForm(form);
+  fillForm(form, knitter);
+  const styles = new Set(knitter.styles || []);
+  form.querySelectorAll("input[name='styles']").forEach((checkbox) => {
+    checkbox.checked = styles.has(checkbox.value);
+  });
+  Object.entries(knitter.prices || {}).forEach(([style, price]) => {
+    const field = form.elements[`price_${style}`];
+    if (field) field.value = price;
+  });
+  form.elements.id.value = knitter.id;
 }
 
 function updateInlineField(type, id, field, value) {
@@ -2755,6 +2775,13 @@ function editItem(type, id) {
     form.elements.name.value = id;
     setPositionEditMode(true);
     form.elements.name.focus();
+  }
+  if (type === "knitter") {
+    const knitter = (state.knitters || []).find((item) => item.id === id);
+    if (!knitter) return;
+    setView("knitters");
+    setKnitterTab("profiles");
+    fillKnitterForm(knitter);
   }
   if (type === "sample") {
     const sample = (state.samples || []).find((item) => item.id === id);
