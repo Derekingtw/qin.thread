@@ -47,6 +47,7 @@ const defaultState = () => ({
   liveSales: [],
   knitters: [],
   samples: [],
+  yarnShipments: [],
   shipments: [],
   staff: [],
   leaveRequests: [],
@@ -88,6 +89,7 @@ let approvalTab = "overview";
 let payrollTab = "admin";
 let intlTab = "setup";
 let tradeLineDrafts = [];
+let yarnShipmentLineDrafts = [];
 let activeTradeDocId = "";
 let editingStaffId = "";
 let currentUser = null;
@@ -213,6 +215,17 @@ function normalizeState(saved) {
     price: Number(item.price || 0),
     leadDays: Number(item.leadDays || findKnitterIn(next, item.knitterId)?.leadTime || 0),
     sendDate: item.sendDate || "",
+    imageData: item.imageData || "",
+  }));
+  next.yarnShipments = (next.yarnShipments || []).map((item) => ({
+    ...item,
+    lines: Array.isArray(item.lines) ? item.lines.map((line) => ({
+      yarnNo: line.yarnNo || "",
+      name: line.name || "",
+      color: line.color || "",
+      qty: Number(line.qty || 0),
+      unit: line.unit || "KG",
+    })) : [],
     imageData: item.imageData || "",
   }));
   next.leaveRequests = (next.leaveRequests || []).map((item) => ({
@@ -751,6 +764,16 @@ function findKnitter(id) {
   return (state.knitters || []).find((item) => item.id === id);
 }
 
+function knitterLabel(id) {
+  const knitter = findKnitter(id);
+  if (!knitter) return "-";
+  return knitter.name || knitter.studioName || "-";
+}
+
+function knitterStudio(id) {
+  return findKnitter(id)?.studioName || "-";
+}
+
 function dayDiff(startDate, endDate) {
   if (!startDate || !endDate) return null;
   const start = new Date(`${startDate}T00:00:00`);
@@ -797,6 +820,9 @@ function knitterRankings() {
 function knitterOptions(select) {
   if (!select) return;
   const rows = state.knitters || [];
+  select.innerHTML = rows.map((item) => `<option value="${item.id}">${escapeHtml(item.name || item.studioName || "未命名織女")}</option>`).join("") || `<option value="">請先新增織女資料</option>`;
+  select.disabled = !rows.length;
+  return;
   select.innerHTML = rows.map((item) => `<option value="${item.id}">${item.name}</option>`).join("") || `<option value="">請先建立織女資料</option>`;
 }
 
@@ -814,6 +840,8 @@ function syncSelects() {
   ["adminPayrollStaff", "livePayrollStaff", "partnerBonusStaff"].forEach((id) => staffOptions($(`#${id}`)));
   ["leaveApprover", "tripApprover", "purchaseRequestApprover", "proposalApprover"].forEach((id) => staffOptions($(`#${id}`), true));
   knitterOptions($("#sampleKnitter"));
+  knitterOptions($("#yarnShipmentKnitter"));
+  updateYarnShipmentStudio();
   updateSampleLeadDays();
   renderProductCard($("#purchaseProduct")?.value, "purchaseProductCard");
   renderProductCard($("#saleProduct")?.value, "saleProductCard");
@@ -913,18 +941,18 @@ function renderDashboardExtras() {
   const sampleRows = (state.samples || []).slice().sort((a, b) => `${b.receivedDate}${b.createdAt}`.localeCompare(`${a.receivedDate}${a.createdAt}`)).slice(0, 6);
   $("#dashboardSampleCount").textContent = `${sampleRows.length} 件`;
   $("#dashboardSampleRows").innerHTML = sampleRows.map((item) => `
-    <tr><td>${item.receivedDate || "-"}</td><td>${knitterName(item.knitterId)}</td><td>${item.style || "-"}</td><td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td><td>${item.hasTutorial || "-"}</td><td class="num">${money(item.price)}</td></tr>
-  `).join("") || emptyRow(6);
+    <tr><td>${item.receivedDate || "-"}</td><td>${knitterLabel(item.knitterId)}</td><td>${knitterStudio(item.knitterId)}</td><td>${item.style || "-"}</td><td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td><td>${item.hasTutorial || "-"}</td><td class="num">${money(item.price)}</td></tr>
+  `).join("") || emptyRow(7);
   $("#dashboardSampleInventoryCount").textContent = `${sampleRows.length} 件`;
   $("#dashboardSampleInventoryRows").innerHTML = sampleRows.map((item) => `
-    <tr><td>${item.style || "-"}</td><td>${knitterName(item.knitterId)}</td><td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td><td>${tag(item.settled || "未支付", item.settled === "已結清" ? "ok" : "warn")}</td><td>${item.receivedDate || "-"}</td></tr>
-  `).join("") || emptyRow(5);
+    <tr><td>${item.style || "-"}</td><td>${knitterLabel(item.knitterId)}</td><td>${knitterStudio(item.knitterId)}</td><td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td><td>${tag(item.settled || "未支付", item.settled === "已結清" ? "ok" : "warn")}</td><td>${item.receivedDate || "-"}</td></tr>
+  `).join("") || emptyRow(6);
 
   const rankingRows = knitterRankings().slice(0, 6);
   $("#dashboardKnitterRankCount").textContent = `${rankingRows.length} 人`;
   $("#dashboardKnitterRankRows").innerHTML = rankingRows.map((item, index) => `
-    <tr><td>${index + 1}</td><td>${item.knitter.name}</td><td>${item.total}</td><td>${item.good}</td><td>${item.medium}</td><td>${item.bad}</td><td>${tag(item.suggestion, item.suggestion === "淘汰建議" ? "out" : "ok")}</td></tr>
-  `).join("") || emptyRow(7);
+    <tr><td>${index + 1}</td><td>${item.knitter.name || "-"}</td><td>${item.knitter.studioName || "-"}</td><td>${item.total}</td><td>${item.good}</td><td>${item.medium}</td><td>${item.bad}</td><td>${tag(item.suggestion, item.suggestion === "淘汰建議" ? "out" : "ok")}</td></tr>
+  `).join("") || emptyRow(8);
 }
 
 function tag(text, type = "") {
@@ -1194,7 +1222,8 @@ function renderKnitters() {
     const delivery = sampleDeliveryInfo(item);
     return `<tr>
       <td>${imageThumb(item.imageData, item.style)}</td>
-      <td>${knitterName(item.knitterId)}</td>
+      <td>${knitterLabel(item.knitterId)}</td>
+      <td>${knitterStudio(item.knitterId)}</td>
       <td>${item.sendDate || "-"}</td>
       <td>${number(delivery.leadDays)} 天</td>
       <td>${inlineDate(item.receivedDate, "sample", item.id, "receivedDate")}</td>
@@ -1207,7 +1236,7 @@ function renderKnitters() {
       <td>${tag(item.settled || "未支付", item.settled === "已結清" ? "ok" : "warn")}</td>
       <td>${rowActions("sample", item.id, true)}</td>
     </tr>`;
-  }).join("") || emptyRow(13);
+  }).join("") || emptyRow(14);
 
   $("#sampleInventoryCount").textContent = `${samples.length} 件`;
   $("#sampleInventoryRows").innerHTML = samples.map((item) => {
@@ -1215,7 +1244,8 @@ function renderKnitters() {
     return `<tr>
       <td>${imageThumb(item.imageData, item.style)}</td>
       <td>${item.style || "-"}</td>
-      <td>${knitterName(item.knitterId)}</td>
+      <td>${knitterLabel(item.knitterId)}</td>
+      <td>${knitterStudio(item.knitterId)}</td>
       <td>${item.sendDate || "-"}</td>
       <td>${number(delivery.leadDays)} 天</td>
       <td>${item.receivedDate || "-"}</td>
@@ -1226,20 +1256,37 @@ function renderKnitters() {
       <td class="num">${money(item.price)}</td>
       <td>${tag(item.settled || "未支付", item.settled === "已結清" ? "ok" : "warn")}</td>
     </tr>`;
-  }).join("") || emptyRow(12);
+  }).join("") || emptyRow(13);
+
+  const yarnRows = currentRows(state.yarnShipments || []).sort((a, b) => `${b.sendDate}${b.createdAt}`.localeCompare(`${a.sendDate}${a.createdAt}`));
+  $("#yarnShipmentCount").textContent = `${yarnRows.length} 筆`;
+  $("#yarnShipmentRows").innerHTML = yarnRows.map((item) => {
+    const lines = (item.lines || []).map((line) => `${line.yarnNo || "-"} ${line.name || ""} ${line.color || ""} ${number(line.qty)} ${line.unit || ""}`.trim()).join("；");
+    return `<tr>
+      <td>${imageThumb(item.imageData, item.trackingNo)}</td>
+      <td>${knitterLabel(item.knitterId)}</td>
+      <td>${knitterStudio(item.knitterId)}</td>
+      <td>${item.trackingNo || "-"}</td>
+      <td>${item.sendDate || "-"}</td>
+      <td>${lines || "-"}</td>
+      <td>${item.note || "-"}</td>
+      <td>${rowActions("yarnShipment", item.id)}</td>
+    </tr>`;
+  }).join("") || emptyRow(8);
 
   const rankingRows = knitterRankings();
   $("#knitterRankingCount").textContent = `${rankingRows.length} 人`;
   $("#knitterRankingRows").innerHTML = rankingRows.map((item, index) => `<tr>
     <td>${index + 1}</td>
-    <td>${item.knitter.name}</td>
+    <td>${item.knitter.name || "-"}</td>
+    <td>${item.knitter.studioName || "-"}</td>
     <td>${item.total}</td>
     <td>${item.good}</td>
     <td>${item.medium}</td>
     <td>${item.bad}</td>
     <td>${item.avgOvertime ? `${item.avgOvertime.toFixed(1)} 天` : "-"}</td>
     <td>${tag(item.suggestion, item.suggestion === "淘汰建議" ? "out" : "ok")}</td>
-  </tr>`).join("") || emptyRow(8);
+  </tr>`).join("") || emptyRow(9);
 }
 
 function renderSettings() {
@@ -1538,6 +1585,42 @@ function removeTradeLine(index) {
   const rows = currentTradeLineDrafts();
   rows.splice(index, 1);
   renderTradeLineInputs(rows.length ? rows : [{}], 0);
+}
+
+function renderYarnShipmentLineInputs(lines = [], minRows = 1) {
+  const rowCount = Math.max(lines.length, minRows);
+  yarnShipmentLineDrafts = Array.from({ length: rowCount }, (_, index) => lines[index] || {});
+  $("#yarnShipmentLineInputs").innerHTML = yarnShipmentLineDrafts.map((line, index) => `<div class="yarn-line-row" data-yarn-line="${index}">
+    <input name="yarnNo" value="${escapeHtml(line.yarnNo || "")}" placeholder="紗號" />
+    <input name="name" value="${escapeHtml(line.name || "")}" placeholder="品名" />
+    <input name="color" value="${escapeHtml(line.color || "")}" placeholder="顏色" />
+    <input name="qty" type="number" min="0" step="0.01" value="${line.qty || ""}" placeholder="數量" />
+    <select name="unit">
+      ${["KG", "包", "團"].map((unit) => `<option value="${unit}" ${unit === (line.unit || "KG") ? "selected" : ""}>${unit}</option>`).join("")}
+    </select>
+    <button class="small-btn delete" data-remove-yarn-line="${index}" type="button" aria-label="刪除明細"><i data-lucide="x"></i></button>
+  </div>`).join("");
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function currentYarnShipmentLineDrafts() {
+  return [...document.querySelectorAll("[data-yarn-line]")].map((row) => ({
+    yarnNo: row.querySelector("[name='yarnNo']").value.trim(),
+    name: row.querySelector("[name='name']").value.trim(),
+    color: row.querySelector("[name='color']").value.trim(),
+    qty: Number(row.querySelector("[name='qty']").value || 0),
+    unit: row.querySelector("[name='unit']").value,
+  })).filter((line) => line.yarnNo || line.name || line.color || line.qty);
+}
+
+function addYarnShipmentLine(count = 1) {
+  renderYarnShipmentLineInputs([...currentYarnShipmentLineDrafts(), ...Array.from({ length: count }, () => ({}))], 0);
+}
+
+function removeYarnShipmentLine(index) {
+  const rows = currentYarnShipmentLineDrafts();
+  rows.splice(index, 1);
+  renderYarnShipmentLineInputs(rows.length ? rows : [{}], 0);
 }
 
 function activeTradeDoc() {
@@ -1985,6 +2068,12 @@ function resetForm(form) {
     form.elements.imageData.value = "";
     renderImagePreview("sampleImagePreview", "");
   }
+  if (form.id === "yarnShipmentForm") {
+    form.elements.imageData.value = "";
+    renderImagePreview("yarnShipmentImagePreview", "");
+    renderYarnShipmentLineInputs([], 1);
+    updateYarnShipmentStudio();
+  }
   if (form.id === "liveSaleForm") {
     updateLiveSaleNet();
   }
@@ -2337,7 +2426,7 @@ function deleteItem(type, id) {
       ? state.purchases.some((doc) => doc.partnerId === id) || state.sales.some((doc) => doc.partnerId === id)
       : false;
   if (hasDoc) return toast("已有單據使用，請保留資料");
-  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs", growthRecord: "growthRecords" };
+  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", yarnShipment: "yarnShipments", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs", growthRecord: "growthRecords" };
   if (type === "staff") {
     const staff = (state.staff || []).find((item) => item.id === id);
     pruneUserAccountsForDeletedStaff(id, staff?.phone);
@@ -2545,9 +2634,38 @@ function addSample(form) {
   renderAll();
 }
 
+function updateYarnShipmentStudio() {
+  const form = $("#yarnShipmentForm");
+  if (!form?.elements.studioName || !form.elements.knitterId) return;
+  const knitter = findKnitter(form.elements.knitterId.value);
+  form.elements.studioName.value = knitter?.studioName || "";
+}
+
+function addYarnShipment(form) {
+  const data = Object.fromEntries(new FormData(form));
+  const lines = currentYarnShipmentLineDrafts();
+  if (!data.knitterId) return toast("請先選擇織女資料");
+  if (!lines.length) return toast("請至少新增一筆毛線明細");
+  state.yarnShipments = [...(state.yarnShipments || []), {
+    id: uid("yarn-ship"),
+    knitterId: data.knitterId,
+    trackingNo: data.trackingNo?.trim() || "",
+    sendDate: data.sendDate,
+    imageData: data.imageData || "",
+    note: data.note?.trim() || "",
+    lines,
+    createdAt: Date.now(),
+  }];
+  saveState();
+  resetForm(form);
+  toast("毛線寄送紀錄已新增");
+  renderAll();
+}
+
 function updateSampleLeadDays() {
   const form = $("#sampleForm");
   if (!form?.elements.leadDays || !form.elements.knitterId) return;
+  if (form.elements.studioName) form.elements.studioName.value = findKnitter(form.elements.knitterId.value)?.studioName || "";
   if (form.elements.leadDays.value) return;
   const knitter = findKnitter(form.elements.knitterId.value);
   if (knitter?.leadTime) form.elements.leadDays.value = knitter.leadTime;
@@ -2794,6 +2912,7 @@ function editItem(type, id) {
     setKnitterTab("samples");
     fillForm($("#sampleForm"), sample);
     $("#sampleForm").elements.id.value = id;
+    updateSampleLeadDays();
   }
   if (type === "tradeDoc") {
     const doc = state.tradeDocs.find((item) => item.id === id);
@@ -3108,6 +3227,7 @@ function bindEvents() {
   $("#productImageInput").addEventListener("change", handleProductImage);
   $("#staffAvatarInput").addEventListener("change", (event) => handleImageUpload(event, "staffForm", "staffAvatarPreview", "avatarData"));
   $("#sampleImageInput").addEventListener("change", (event) => handleImageUpload(event, "sampleForm", "sampleImagePreview"));
+  $("#yarnShipmentImageInput").addEventListener("change", (event) => handleImageUpload(event, "yarnShipmentForm", "yarnShipmentImagePreview"));
   $("#backgroundImageInput").addEventListener("change", handleBackgroundImage);
   $("#appearanceForm").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -3128,6 +3248,11 @@ function bindEvents() {
     const remove = event.target.closest("[data-remove-trade-line]");
     if (remove) removeTradeLine(Number(remove.dataset.removeTradeLine));
   });
+  $("#yarnShipmentLineInputs").addEventListener("click", (event) => {
+    const remove = event.target.closest("[data-remove-yarn-line]");
+    if (remove) removeYarnShipmentLine(Number(remove.dataset.removeYarnLine));
+  });
+  $("#addYarnShipmentLineBtn").addEventListener("click", () => addYarnShipmentLine());
   $("#tradeDocSelect").addEventListener("change", (event) => setActiveTradeDoc(event.target.value));
   $("#tradeDocRows").addEventListener("click", (event) => {
     const selectButton = event.target.closest("[data-select-trade-doc]");
@@ -3214,6 +3339,11 @@ function bindEvents() {
     addSample(event.currentTarget);
   });
   $("#sampleKnitter").addEventListener("change", updateSampleLeadDays);
+  $("#yarnShipmentForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addYarnShipment(event.currentTarget);
+  });
+  $("#yarnShipmentKnitter").addEventListener("change", updateYarnShipmentStudio);
   $("#staffForm").addEventListener("submit", (event) => {
     event.preventDefault();
     addStaff(event.currentTarget);
@@ -3349,6 +3479,7 @@ async function init() {
   resetForm($("#tradeForm"));
   resetForm($("#knitterForm"));
   resetForm($("#sampleForm"));
+  resetForm($("#yarnShipmentForm"));
   resetForm($("#staffForm"));
   resetForm($("#positionForm"));
   resetForm($("#leaveForm"));

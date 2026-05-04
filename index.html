@@ -159,7 +159,7 @@
             <div class="panel-head"><h2>織女排名</h2><span class="pill" id="dashboardKnitterRankCount">0 人</span></div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>排名</th><th>織女</th><th>交付件數</th><th>優</th><th>中等</th><th>劣跡</th><th>建議</th></tr></thead>
+                <thead><tr><th>排名</th><th>織女</th><th>公司&工作室</th><th>交付件數</th><th>優</th><th>中等</th><th>劣跡</th><th>建議</th></tr></thead>
                 <tbody id="dashboardKnitterRankRows"></tbody>
               </table>
             </div>
@@ -170,7 +170,7 @@
             <div class="panel-head"><h2>樣衣&配件</h2><span class="pill" id="dashboardSampleCount">0 件</span></div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>收到日期</th><th>織女</th><th>款式</th><th>狀態</th><th>教程</th><th>單價</th></tr></thead>
+                <thead><tr><th>收到日期</th><th>織女</th><th>公司&工作室</th><th>款式</th><th>狀態</th><th>教程</th><th>單價</th></tr></thead>
                 <tbody id="dashboardSampleRows"></tbody>
               </table>
             </div>
@@ -179,7 +179,7 @@
             <div class="panel-head"><h2>樣衣&配件庫存</h2><span class="pill" id="dashboardSampleInventoryCount">0 件</span></div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>款式</th><th>織女</th><th>狀態</th><th>結清</th><th>收到日期</th></tr></thead>
+                <thead><tr><th>款式</th><th>織女</th><th>公司&工作室</th><th>狀態</th><th>結清</th><th>收到日期</th></tr></thead>
                 <tbody id="dashboardSampleInventoryRows"></tbody>
               </table>
             </div>
@@ -552,6 +552,7 @@
           <button class="section-tab active" data-knitter-tab="profiles" type="button">織女資料</button>
           <button class="section-tab" data-knitter-tab="samples" type="button">樣衣&配件</button>
           <button class="section-tab" data-knitter-tab="inventory" type="button">樣衣&配件庫存</button>
+          <button class="section-tab" data-knitter-tab="yarnShipments" type="button">毛線寄送紀錄</button>
           <button class="section-tab" data-knitter-tab="ranking" type="button">織女排名</button>
         </div>
         <div class="workspace knitter-panel active" data-knitter-panel="profiles">
@@ -589,6 +590,7 @@
             <h2>樣衣&配件</h2>
             <input type="hidden" name="id" />
             <label>織女姓名<select required name="knitterId" id="sampleKnitter"></select></label>
+            <label>公司&工作室<input readonly name="studioName" id="sampleStudio" placeholder="依織女資料帶入" /></label>
             <label>收到日期<input name="receivedDate" type="date" /></label>
             <label>交期天數<span class="unit-field"><input required name="leadDays" type="number" min="1" step="1" /><b>天</b></span></label>
             <label>寄送日期<input required name="sendDate" type="date" /></label>
@@ -604,19 +606,47 @@
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2>樣衣&配件紀錄</h2><span id="sampleCount" class="pill">0 筆</span></div>
-            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>織女姓名</th><th>寄送日期</th><th>交期天數</th><th>收到日期</th><th>是否超時</th><th>評級</th><th>狀態</th><th>樣衣款式</th><th>教程</th><th>單價</th><th>結清</th><th></th></tr></thead><tbody id="sampleRows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>織女姓名</th><th>公司&工作室</th><th>寄送日期</th><th>交期天數</th><th>收到日期</th><th>是否超時</th><th>評級</th><th>狀態</th><th>樣衣款式</th><th>教程</th><th>單價</th><th>結清</th><th></th></tr></thead><tbody id="sampleRows"></tbody></table></div>
           </section>
         </div>
         <div class="knitter-panel" data-knitter-panel="inventory">
           <section class="panel">
             <div class="panel-head"><h2>樣衣&配件庫存</h2><span id="sampleInventoryCount" class="pill">0 件</span></div>
-            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>款式</th><th>織女姓名</th><th>寄送日期</th><th>交期天數</th><th>收到日期</th><th>是否超時</th><th>評級</th><th>狀態</th><th>教程</th><th>單價</th><th>結清</th></tr></thead><tbody id="sampleInventoryRows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>款式</th><th>織女姓名</th><th>公司&工作室</th><th>寄送日期</th><th>交期天數</th><th>收到日期</th><th>是否超時</th><th>評級</th><th>狀態</th><th>教程</th><th>單價</th><th>結清</th></tr></thead><tbody id="sampleInventoryRows"></tbody></table></div>
+          </section>
+        </div>
+        <div class="workspace knitter-panel" data-knitter-panel="yarnShipments">
+          <form class="editor yarn-shipment-editor" id="yarnShipmentForm">
+            <h2>毛線寄送紀錄</h2>
+            <label>織女姓名<select required name="knitterId" id="yarnShipmentKnitter"></select></label>
+            <label>公司&工作室<input readonly name="studioName" id="yarnShipmentStudio" placeholder="依織女資料帶入" /></label>
+            <label>寄送單號<input required name="trackingNo" placeholder="SF123456789" /></label>
+            <label>寄送日期<input required name="sendDate" type="date" /></label>
+            <input type="hidden" name="imageData" />
+            <label>圖片<input name="imageFile" id="yarnShipmentImageInput" type="file" accept="image/*" /></label>
+            <div class="image-preview" id="yarnShipmentImagePreview">尚未選擇圖片</div>
+            <label>備註<input name="note" placeholder="包裝、物流或特殊說明" /></label>
+            <div class="yarn-lines">
+              <div class="trade-lines-head">
+                <strong>寄送明細</strong>
+                <div>
+                  <button class="ghost-light-btn" id="addYarnShipmentLineBtn" type="button">新增明細</button>
+                </div>
+              </div>
+              <div class="yarn-line-head"><span>紗號</span><span>品名</span><span>顏色</span><span>數量</span><span>單位</span></div>
+              <div id="yarnShipmentLineInputs"></div>
+            </div>
+            <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存毛線寄送</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>毛線寄送清單</h2><span id="yarnShipmentCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>織女姓名</th><th>公司&工作室</th><th>寄送單號</th><th>寄送日期</th><th>明細</th><th>備註</th><th></th></tr></thead><tbody id="yarnShipmentRows"></tbody></table></div>
           </section>
         </div>
         <div class="knitter-panel" data-knitter-panel="ranking">
           <section class="panel">
             <div class="panel-head"><h2>織女排名清單</h2><span id="knitterRankingCount" class="pill">0 人</span></div>
-            <div class="table-wrap"><table><thead><tr><th>排名</th><th>織女</th><th>交付件數</th><th>優</th><th>中等</th><th>劣跡</th><th>平均超時</th><th>建議</th></tr></thead><tbody id="knitterRankingRows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>排名</th><th>織女</th><th>公司&工作室</th><th>交付件數</th><th>優</th><th>中等</th><th>劣跡</th><th>平均超時</th><th>建議</th></tr></thead><tbody id="knitterRankingRows"></tbody></table></div>
           </section>
         </div>
       </section>
@@ -1019,6 +1049,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260504-05"></script>
+    <script src="app.js?v=20260504-06"></script>
   </body>
 </html>
