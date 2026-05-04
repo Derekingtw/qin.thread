@@ -941,6 +941,16 @@ function rowActions(type, id, editable = false) {
   </div>`;
 }
 
+function inlineDate(value, type, id, field) {
+  return `<input class="table-control" type="date" value="${escapeHtml(value || "")}" data-inline-update="${type}" data-id="${id}" data-field="${field}" />`;
+}
+
+function inlineSelect(value, type, id, field, options) {
+  return `<select class="table-control" data-inline-update="${type}" data-id="${id}" data-field="${field}">
+    ${options.map((option) => `<option value="${escapeHtml(option)}" ${option === value ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+  </select>`;
+}
+
 function renderProducts() {
   const saleRows = currentRows(state.products.filter((product) => product.type === "sale"));
   const officeRows = currentRows(state.products.filter((product) => product.type !== "sale"));
@@ -1185,15 +1195,15 @@ function renderKnitters() {
       <td>${knitterName(item.knitterId)}</td>
       <td>${item.sendDate || "-"}</td>
       <td>${number(delivery.leadDays)} 天</td>
-      <td>${item.receivedDate || "-"}</td>
+      <td>${inlineDate(item.receivedDate, "sample", item.id, "receivedDate")}</td>
       <td>${delivery.text}</td>
       <td>${tag(delivery.rating, delivery.ratingType)}</td>
-      <td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td>
+      <td>${inlineSelect(item.status || "編織中", "sample", item.id, "status", ["編織中", "寄送中", "已到貨"])}</td>
       <td>${item.style || "-"}</td>
       <td>${item.hasTutorial || "-"}</td>
       <td class="num">${money(item.price)}</td>
       <td>${tag(item.settled || "未支付", item.settled === "已結清" ? "ok" : "warn")}</td>
-      <td>${rowActions("sample", item.id)}</td>
+      <td>${rowActions("sample", item.id, true)}</td>
     </tr>`;
   }).join("") || emptyRow(13);
 
@@ -1929,6 +1939,9 @@ function fillForm(form, data) {
     form.elements.oldName.value = "";
     setPositionEditMode(false);
   }
+  if (form.id === "sampleForm") {
+    renderImagePreview("sampleImagePreview", form.elements.imageData?.value || "");
+  }
 }
 
 function resetForm(form) {
@@ -1936,7 +1949,7 @@ function resetForm(form) {
   if (form.elements.id) form.elements.id.value = "";
   if (form.elements.date) form.elements.date.value = today();
   if (form.elements.contractDate) form.elements.contractDate.value = today();
-  if (form.elements.receivedDate) form.elements.receivedDate.value = today();
+  if (form.elements.receivedDate && form.id !== "sampleForm") form.elements.receivedDate.value = today();
   if (form.elements.startDate) form.elements.startDate.value = today();
   if (form.elements.endDate) form.elements.endDate.value = today();
   if (form.id === "growthForm") {
@@ -2500,23 +2513,27 @@ function addKnitter(form) {
 function addSample(form) {
   const data = Object.fromEntries(new FormData(form));
   if (!data.knitterId) return toast("請先建立織女資料");
-  state.samples = [...(state.samples || []), {
-    id: uid("sample"),
+  const existing = data.id ? (state.samples || []).find((item) => item.id === data.id) : null;
+  const payload = {
+    id: data.id || uid("sample"),
     knitterId: data.knitterId,
-    receivedDate: data.receivedDate,
+    receivedDate: data.receivedDate || "",
     leadDays: Number(data.leadDays || findKnitter(data.knitterId)?.leadTime || 0),
     sendDate: data.sendDate,
-    imageData: data.imageData || "",
+    imageData: data.imageData || existing?.imageData || "",
     status: data.status,
     style: data.style,
     hasTutorial: data.hasTutorial,
     price: Number(data.price || 0),
     settled: data.settled,
-    createdAt: Date.now(),
-  }];
+    createdAt: existing?.createdAt || Date.now(),
+  };
+  state.samples = data.id
+    ? (state.samples || []).map((item) => item.id === data.id ? payload : item)
+    : [...(state.samples || []), payload];
   saveState();
   resetForm(form);
-  toast("樣衣&配件已新增");
+  toast(data.id ? "樣衣&配件已修改" : "樣衣&配件已新增");
   renderAll();
 }
 
@@ -2526,6 +2543,16 @@ function updateSampleLeadDays() {
   if (form.elements.leadDays.value) return;
   const knitter = findKnitter(form.elements.knitterId.value);
   if (knitter?.leadTime) form.elements.leadDays.value = knitter.leadTime;
+}
+
+function updateInlineField(type, id, field, value) {
+  const map = { sample: "samples" };
+  const key = map[type];
+  if (!key || !Array.isArray(state[key])) return;
+  state[key] = state[key].map((item) => item.id === id ? { ...item, [field]: value } : item);
+  saveState();
+  renderAll();
+  toast("資料已更新");
 }
 
 function addLiveSale(form) {
@@ -2728,6 +2755,14 @@ function editItem(type, id) {
     form.elements.name.value = id;
     setPositionEditMode(true);
     form.elements.name.focus();
+  }
+  if (type === "sample") {
+    const sample = (state.samples || []).find((item) => item.id === id);
+    if (!sample) return;
+    setView("knitters");
+    setKnitterTab("samples");
+    fillForm($("#sampleForm"), sample);
+    $("#sampleForm").elements.id.value = id;
   }
   if (type === "tradeDoc") {
     const doc = state.tradeDocs.find((item) => item.id === id);
@@ -3228,6 +3263,11 @@ function bindEvents() {
     if (reject) approveRequest(reject.dataset.reject, reject.dataset.id, "已駁回");
   });
   document.addEventListener("change", (event) => {
+    const inline = event.target.closest("[data-inline-update]");
+    if (inline) {
+      updateInlineField(inline.dataset.inlineUpdate, inline.dataset.id, inline.dataset.field, inline.value);
+      return;
+    }
     const checkbox = event.target.closest("[data-permission-user]");
     if (!checkbox) return;
     const user = state.settings.users.find((item) => item.id === checkbox.dataset.permissionUser);
