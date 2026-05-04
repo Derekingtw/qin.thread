@@ -2488,6 +2488,7 @@ function addPartnerBonus(form) {
 function addKnitter(form) {
   const data = Object.fromEntries(new FormData(form));
   const styles = new FormData(form).getAll("styles");
+  if (!data.name?.trim() && !data.studioName?.trim()) return toast("織女姓名與公司&工作室名稱至少填寫一個");
   if (!styles.length) return toast("請至少選擇一個樣衣款式");
   const prices = Object.fromEntries(styles.map((style) => [style, Number(data[`price_${style}`] || 0)]));
   const existing = data.id ? (state.knitters || []).find((item) => item.id === data.id) : null;
