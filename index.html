@@ -174,6 +174,17 @@
             </div>
           </section>
         </div>
+        <div class="dashboard-grid dashboard-extra">
+          <section class="panel wide">
+            <div class="panel-head"><h2>織女排名</h2><span class="pill" id="dashboardKnitterRankCount">0 人</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>排名</th><th>織女</th><th>交付件數</th><th>優</th><th>中等</th><th>劣跡</th><th>建議</th></tr></thead>
+                <tbody id="dashboardKnitterRankRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
       </section>
 
       <section class="view" id="products">
@@ -541,12 +552,18 @@
           <button class="section-tab active" data-knitter-tab="profiles" type="button">織女資料</button>
           <button class="section-tab" data-knitter-tab="samples" type="button">樣衣&配件</button>
           <button class="section-tab" data-knitter-tab="inventory" type="button">樣衣&配件庫存</button>
+          <button class="section-tab" data-knitter-tab="ranking" type="button">織女排名</button>
         </div>
         <div class="workspace knitter-panel active" data-knitter-panel="profiles">
           <form class="editor" id="knitterForm">
             <h2>織女資料</h2>
             <label>簽約日期<input required name="contractDate" type="date" /></label>
             <label>織女姓名<input required name="name" placeholder="織女姓名" /></label>
+            <label>身分證號/統一信用社會代碼<input name="identityCode" /></label>
+            <label>聯繫電話<input name="contactPhone" type="tel" /></label>
+            <label>微信帳號<input name="wechat" /></label>
+            <label>QQ帳號<input name="qq" /></label>
+            <label>聯繫地址<input name="contactAddress" /></label>
             <fieldset class="check-panel">
               <legend>樣衣款式</legend>
               <label><input type="checkbox" name="styles" value="無袖" />無袖 <input name="price_無袖" type="number" min="0" step="1" placeholder="單價" /></label>
@@ -562,7 +579,7 @@
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2>織女清單</h2><span id="knitterCount" class="pill">0 筆</span></div>
-            <div class="table-wrap"><table><thead><tr><th>簽約日期</th><th>織女姓名</th><th>樣衣款式</th><th>單價</th><th>交期</th><th>教程</th><th>結款日</th><th></th></tr></thead><tbody id="knitterRows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>簽約日期</th><th>織女姓名</th><th>電話</th><th>微信</th><th>QQ</th><th>身分證號/統一信用社會代碼</th><th>地址</th><th>樣衣款式</th><th>單價</th><th>交期</th><th>教程</th><th>結款日</th><th></th></tr></thead><tbody id="knitterRows"></tbody></table></div>
           </section>
         </div>
         <div class="workspace knitter-panel" data-knitter-panel="samples">
@@ -570,6 +587,8 @@
             <h2>樣衣&配件</h2>
             <label>織女姓名<select required name="knitterId" id="sampleKnitter"></select></label>
             <label>收到日期<input required name="receivedDate" type="date" /></label>
+            <label>交期天數<span class="unit-field"><input required name="leadDays" type="number" min="1" step="1" /><b>天</b></span></label>
+            <label>寄送日期<input required name="sendDate" type="date" /></label>
             <input type="hidden" name="imageData" />
             <label>圖片<input name="imageFile" id="sampleImageInput" type="file" accept="image/*" /></label>
             <div class="image-preview" id="sampleImagePreview">尚未選擇圖片</div>
@@ -582,13 +601,19 @@
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2>樣衣&配件紀錄</h2><span id="sampleCount" class="pill">0 筆</span></div>
-            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>織女姓名</th><th>收到日期</th><th>狀態</th><th>樣衣款式</th><th>教程</th><th>單價</th><th>結清</th><th></th></tr></thead><tbody id="sampleRows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>織女姓名</th><th>寄送日期</th><th>交期天數</th><th>收到日期</th><th>是否超時</th><th>評級</th><th>狀態</th><th>樣衣款式</th><th>教程</th><th>單價</th><th>結清</th><th></th></tr></thead><tbody id="sampleRows"></tbody></table></div>
           </section>
         </div>
         <div class="knitter-panel" data-knitter-panel="inventory">
           <section class="panel">
             <div class="panel-head"><h2>樣衣&配件庫存</h2><span id="sampleInventoryCount" class="pill">0 件</span></div>
-            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>款式</th><th>織女姓名</th><th>收到日期</th><th>狀態</th><th>教程</th><th>單價</th><th>結清</th></tr></thead><tbody id="sampleInventoryRows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>圖片</th><th>款式</th><th>織女姓名</th><th>寄送日期</th><th>交期天數</th><th>收到日期</th><th>是否超時</th><th>評級</th><th>狀態</th><th>教程</th><th>單價</th><th>結清</th></tr></thead><tbody id="sampleInventoryRows"></tbody></table></div>
+          </section>
+        </div>
+        <div class="knitter-panel" data-knitter-panel="ranking">
+          <section class="panel">
+            <div class="panel-head"><h2>織女排名清單</h2><span id="knitterRankingCount" class="pill">0 人</span></div>
+            <div class="table-wrap"><table><thead><tr><th>排名</th><th>織女</th><th>交付件數</th><th>優</th><th>中等</th><th>劣跡</th><th>平均超時</th><th>建議</th></tr></thead><tbody id="knitterRankingRows"></tbody></table></div>
           </section>
         </div>
       </section>
@@ -991,6 +1016,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260503-25"></script>
+    <script src="app.js?v=20260504-01"></script>
   </body>
 </html>

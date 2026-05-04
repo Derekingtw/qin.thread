@@ -201,10 +201,17 @@ function normalizeState(saved) {
     styles: Array.isArray(item.styles) ? item.styles : String(item.styles || "").split("、").filter(Boolean),
     prices: item.prices || {},
     leadTime: Number(item.leadTime || 0),
+    identityCode: item.identityCode || "",
+    contactPhone: item.contactPhone || "",
+    wechat: item.wechat || "",
+    qq: item.qq || "",
+    contactAddress: item.contactAddress || "",
   }));
   next.samples = (next.samples || []).map((item) => ({
     ...item,
     price: Number(item.price || 0),
+    leadDays: Number(item.leadDays || findKnitterIn(next, item.knitterId)?.leadTime || 0),
+    sendDate: item.sendDate || "",
     imageData: item.imageData || "",
   }));
   next.leaveRequests = (next.leaveRequests || []).map((item) => ({
@@ -252,6 +259,10 @@ function findApproverIdByName(saved, name) {
 
 function findProductIn(saved, id) {
   return (saved?.products || []).find((item) => item.id === id);
+}
+
+function findKnitterIn(saved, id) {
+  return (saved?.knitters || []).find((item) => item.id === id);
 }
 
 function normalizeStaffRole(role) {
@@ -735,6 +746,53 @@ function knitterName(id) {
   return (state.knitters || []).find((item) => item.id === id)?.name || "-";
 }
 
+function findKnitter(id) {
+  return (state.knitters || []).find((item) => item.id === id);
+}
+
+function dayDiff(startDate, endDate) {
+  if (!startDate || !endDate) return null;
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return Math.round((end - start) / 86400000);
+}
+
+function sampleDeliveryInfo(sample) {
+  const leadDays = Number(sample.leadDays || findKnitter(sample.knitterId)?.leadTime || 0);
+  if (!sample.sendDate || !sample.receivedDate || !leadDays) {
+    return { leadDays, diff: null, text: "待計算", rating: "待到貨", ratingType: "blue", suggestion: "" };
+  }
+  const usedDays = dayDiff(sample.sendDate, sample.receivedDate);
+  if (usedDays === null) return { leadDays, diff: null, text: "待計算", rating: "待到貨", ratingType: "blue", suggestion: "" };
+  const overtime = usedDays - leadDays;
+  const text = overtime < 0 ? `提前 ${Math.abs(overtime)} 天` : overtime === 0 ? "準時" : `超時 ${overtime} 天`;
+  const rating = overtime <= 0 ? "優" : overtime <= 2 ? "中等" : "劣跡";
+  const ratingType = rating === "優" ? "ok" : rating === "中等" ? "warn" : "out";
+  return { leadDays, diff: overtime, text, rating, ratingType, suggestion: "" };
+}
+
+function knitterRankings() {
+  return (state.knitters || []).map((knitter) => {
+    const samples = (state.samples || []).filter((item) => item.knitterId === knitter.id && sampleDeliveryInfo(item).diff !== null);
+    const stats = samples.reduce((acc, sample) => {
+      const info = sampleDeliveryInfo(sample);
+      if (info.rating === "優") acc.good += 1;
+      if (info.rating === "中等") acc.medium += 1;
+      if (info.rating === "劣跡") acc.bad += 1;
+      acc.overtime += Math.max(0, Number(info.diff || 0));
+      return acc;
+    }, { good: 0, medium: 0, bad: 0, overtime: 0 });
+    return {
+      knitter,
+      total: samples.length,
+      ...stats,
+      avgOvertime: samples.length ? stats.overtime / samples.length : 0,
+      suggestion: stats.bad > 3 ? "淘汰建議" : "正常合作",
+    };
+  }).sort((a, b) => b.good * 3 + b.medium - b.bad * 3 - b.avgOvertime - (a.good * 3 + a.medium - a.bad * 3 - a.avgOvertime));
+}
+
 function knitterOptions(select) {
   if (!select) return;
   const rows = state.knitters || [];
@@ -755,6 +813,7 @@ function syncSelects() {
   ["adminPayrollStaff", "livePayrollStaff", "partnerBonusStaff"].forEach((id) => staffOptions($(`#${id}`)));
   ["leaveApprover", "tripApprover", "purchaseRequestApprover", "proposalApprover"].forEach((id) => staffOptions($(`#${id}`), true));
   knitterOptions($("#sampleKnitter"));
+  updateSampleLeadDays();
   renderProductCard($("#purchaseProduct")?.value, "purchaseProductCard");
   renderProductCard($("#saleProduct")?.value, "saleProductCard");
   renderProductCard($("#shipmentProduct")?.value, "shipmentProductCard");
@@ -859,6 +918,12 @@ function renderDashboardExtras() {
   $("#dashboardSampleInventoryRows").innerHTML = sampleRows.map((item) => `
     <tr><td>${item.style || "-"}</td><td>${knitterName(item.knitterId)}</td><td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td><td>${tag(item.settled || "未支付", item.settled === "已結清" ? "ok" : "warn")}</td><td>${item.receivedDate || "-"}</td></tr>
   `).join("") || emptyRow(5);
+
+  const rankingRows = knitterRankings().slice(0, 6);
+  $("#dashboardKnitterRankCount").textContent = `${rankingRows.length} 人`;
+  $("#dashboardKnitterRankRows").innerHTML = rankingRows.map((item, index) => `
+    <tr><td>${index + 1}</td><td>${item.knitter.name}</td><td>${item.total}</td><td>${item.good}</td><td>${item.medium}</td><td>${item.bad}</td><td>${tag(item.suggestion, item.suggestion === "淘汰建議" ? "out" : "ok")}</td></tr>
+  `).join("") || emptyRow(7);
 }
 
 function tag(text, type = "") {
@@ -1097,6 +1162,11 @@ function renderKnitters() {
     return `<tr>
       <td>${item.contractDate || "-"}</td>
       <td>${item.name || "-"}</td>
+      <td>${item.contactPhone || "-"}</td>
+      <td>${item.wechat || "-"}</td>
+      <td>${item.qq || "-"}</td>
+      <td>${item.identityCode || "-"}</td>
+      <td>${item.contactAddress || "-"}</td>
       <td>${styles.join("、") || "-"}</td>
       <td>${priceText}</td>
       <td>${number(item.leadTime)} 天</td>
@@ -1104,32 +1174,59 @@ function renderKnitters() {
       <td>${item.settlementDate || "-"}</td>
       <td>${rowActions("knitter", item.id)}</td>
     </tr>`;
-  }).join("") || emptyRow(8);
+  }).join("") || emptyRow(13);
 
   const samples = currentRows(state.samples || []).sort((a, b) => `${b.receivedDate}${b.createdAt}`.localeCompare(`${a.receivedDate}${a.createdAt}`));
   $("#sampleCount").textContent = `${samples.length} 筆`;
-  $("#sampleRows").innerHTML = samples.map((item) => `<tr>
-    <td>${imageThumb(item.imageData, item.style)}</td>
-    <td>${knitterName(item.knitterId)}</td>
-    <td>${item.receivedDate || "-"}</td>
-    <td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td>
-    <td>${item.style || "-"}</td>
-    <td>${item.hasTutorial || "-"}</td>
-    <td class="num">${money(item.price)}</td>
-    <td>${tag(item.settled || "未支付", item.settled === "已結清" ? "ok" : "warn")}</td>
-    <td>${rowActions("sample", item.id)}</td>
-  </tr>`).join("") || emptyRow(9);
+  $("#sampleRows").innerHTML = samples.map((item) => {
+    const delivery = sampleDeliveryInfo(item);
+    return `<tr>
+      <td>${imageThumb(item.imageData, item.style)}</td>
+      <td>${knitterName(item.knitterId)}</td>
+      <td>${item.sendDate || "-"}</td>
+      <td>${number(delivery.leadDays)} 天</td>
+      <td>${item.receivedDate || "-"}</td>
+      <td>${delivery.text}</td>
+      <td>${tag(delivery.rating, delivery.ratingType)}</td>
+      <td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td>
+      <td>${item.style || "-"}</td>
+      <td>${item.hasTutorial || "-"}</td>
+      <td class="num">${money(item.price)}</td>
+      <td>${tag(item.settled || "未支付", item.settled === "已結清" ? "ok" : "warn")}</td>
+      <td>${rowActions("sample", item.id)}</td>
+    </tr>`;
+  }).join("") || emptyRow(13);
 
   $("#sampleInventoryCount").textContent = `${samples.length} 件`;
-  $("#sampleInventoryRows").innerHTML = samples.map((item) => `<tr>
-    <td>${imageThumb(item.imageData, item.style)}</td>
-    <td>${item.style || "-"}</td>
-    <td>${knitterName(item.knitterId)}</td>
-    <td>${item.receivedDate || "-"}</td>
-    <td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td>
-    <td>${item.hasTutorial || "-"}</td>
-    <td class="num">${money(item.price)}</td>
-    <td>${tag(item.settled || "未支付", item.settled === "已結清" ? "ok" : "warn")}</td>
+  $("#sampleInventoryRows").innerHTML = samples.map((item) => {
+    const delivery = sampleDeliveryInfo(item);
+    return `<tr>
+      <td>${imageThumb(item.imageData, item.style)}</td>
+      <td>${item.style || "-"}</td>
+      <td>${knitterName(item.knitterId)}</td>
+      <td>${item.sendDate || "-"}</td>
+      <td>${number(delivery.leadDays)} 天</td>
+      <td>${item.receivedDate || "-"}</td>
+      <td>${delivery.text}</td>
+      <td>${tag(delivery.rating, delivery.ratingType)}</td>
+      <td>${tag(item.status || "-", item.status === "已到貨" ? "ok" : "blue")}</td>
+      <td>${item.hasTutorial || "-"}</td>
+      <td class="num">${money(item.price)}</td>
+      <td>${tag(item.settled || "未支付", item.settled === "已結清" ? "ok" : "warn")}</td>
+    </tr>`;
+  }).join("") || emptyRow(12);
+
+  const rankingRows = knitterRankings();
+  $("#knitterRankingCount").textContent = `${rankingRows.length} 人`;
+  $("#knitterRankingRows").innerHTML = rankingRows.map((item, index) => `<tr>
+    <td>${index + 1}</td>
+    <td>${item.knitter.name}</td>
+    <td>${item.total}</td>
+    <td>${item.good}</td>
+    <td>${item.medium}</td>
+    <td>${item.bad}</td>
+    <td>${item.avgOvertime ? `${item.avgOvertime.toFixed(1)} 天` : "-"}</td>
+    <td>${tag(item.suggestion, item.suggestion === "淘汰建議" ? "out" : "ok")}</td>
   </tr>`).join("") || emptyRow(8);
 }
 
@@ -2382,6 +2479,11 @@ function addKnitter(form) {
     id: uid("knitter"),
     contractDate: data.contractDate,
     name: data.name.trim(),
+    identityCode: data.identityCode?.trim() || "",
+    contactPhone: data.contactPhone?.trim() || "",
+    wechat: data.wechat?.trim() || "",
+    qq: data.qq?.trim() || "",
+    contactAddress: data.contactAddress?.trim() || "",
     styles,
     prices,
     leadTime: Number(data.leadTime || 0),
@@ -2402,6 +2504,8 @@ function addSample(form) {
     id: uid("sample"),
     knitterId: data.knitterId,
     receivedDate: data.receivedDate,
+    leadDays: Number(data.leadDays || findKnitter(data.knitterId)?.leadTime || 0),
+    sendDate: data.sendDate,
     imageData: data.imageData || "",
     status: data.status,
     style: data.style,
@@ -2414,6 +2518,14 @@ function addSample(form) {
   resetForm(form);
   toast("樣衣&配件已新增");
   renderAll();
+}
+
+function updateSampleLeadDays() {
+  const form = $("#sampleForm");
+  if (!form?.elements.leadDays || !form.elements.knitterId) return;
+  if (form.elements.leadDays.value) return;
+  const knitter = findKnitter(form.elements.knitterId.value);
+  if (knitter?.leadTime) form.elements.leadDays.value = knitter.leadTime;
 }
 
 function addLiveSale(form) {
@@ -2725,9 +2837,9 @@ function reportContent(view) {
     production: () => reportTable(["追蹤編號", "品名", "目前進度", "預計完成", "剩餘天數", "風險"], (state.yarnTracks || []).map((p) => [p.code, p.name, p.status, p.dueDate, daysLeft(p.dueDate) === "" ? "" : `${daysLeft(p.dueDate)} 天`, p.status === "已完成" ? "完成" : daysLeft(p.dueDate) < 0 ? "逾期" : "正常"])),
     live: () => reportTable(["場次", "日期", "時段", "主播", "主推品", "紗號", "目標GMV", "狀態"], (state.liveShows || []).map((p) => [p.code, p.date, p.time, p.host, p.productName, p.yarnNo, money(p.targetGmv), p.status])),
     liveSales: () => reportTable(["日期", "直播間", "主播", "營收", "退款", "淨營收", "備註"], (state.liveSales || []).map((p) => [p.date, p.room, p.host, money(p.revenue), money(p.refund), money(liveNet(p)), p.note])),
-    knitters: () => reportTable(["類型", "日期", "姓名/織女", "款式", "狀態", "單價/金額"], [
-      ...(state.knitters || []).map((p) => ["織女資料", p.contractDate, p.name, (p.styles || []).join("、"), p.tutorialAvailable, (p.styles || []).map((style) => `${style} ${money(p.prices?.[style] || 0)}`).join("、")]),
-      ...(state.samples || []).map((p) => ["樣衣&配件", p.receivedDate, knitterName(p.knitterId), p.style, p.status, money(p.price)]),
+    knitters: () => reportTable(["類型", "日期", "姓名/織女", "聯繫電話", "款式", "交期/評級", "狀態", "單價/金額"], [
+      ...(state.knitters || []).map((p) => ["織女資料", p.contractDate, p.name, p.contactPhone || "-", (p.styles || []).join("、"), `${number(p.leadTime)} 天`, p.tutorialAvailable, (p.styles || []).map((style) => `${style} ${money(p.prices?.[style] || 0)}`).join("、")]),
+      ...(state.samples || []).map((p) => { const info = sampleDeliveryInfo(p); return ["樣衣&配件", p.receivedDate, knitterName(p.knitterId), findKnitter(p.knitterId)?.contactPhone || "-", p.style, `${info.text} / ${info.rating}`, p.status, money(p.price)]; }),
     ]),
     shipping: () => reportTable(["單號", "日期", "國內合作商", "產品編號", "銷售產品", "缸號", "出貨包數", "單包價格", "小計", "狀態"], (state.shipments || []).map((p) => { const product = findProduct(p.productId); const partner = findPartner(p.partnerId); return [p.no, p.date, partner?.customerName || partner?.name || p.customer, product?.sku, product?.name || p.productName, p.vat, `${number(p.qty)} 包`, money(p.price), money(Number(p.qty) * Number(p.price)), p.status]; })),
     staff: () => reportTable(["編號", "姓名", "部門", "職位", "角色", "帳號／手機號", "狀態"], (state.staff || []).map((p) => [p.code, p.name, p.dept, p.title, p.role, p.phone, p.status])),
@@ -2866,10 +2978,10 @@ function seedData() {
       { id: "livesale-1", liveId: "live-1", date: today(), room: "小紅書", host: "周逸秋", revenue: 7680, refund: 860, netRevenue: 6820, note: "主推色直播", createdAt: Date.now() - 48000 },
     ],
     knitters: [
-      { id: "knitter-1", contractDate: "2026-05-02", name: "蘇雲娘", styles: ["無袖", "背心"], prices: { "無袖": 1200, "背心": 980 }, leadTime: 14, tutorialAvailable: "可", settlementDate: "2026-05-31", createdAt: Date.now() - 47000 },
+      { id: "knitter-1", contractDate: "2026-05-02", name: "蘇雲娘", identityCode: "91350000MA00000000", contactPhone: "13800000000", wechat: "suyunniang", qq: "100001", contactAddress: "浙江省杭州市", styles: ["無袖", "背心"], prices: { "無袖": 1200, "背心": 980 }, leadTime: 14, tutorialAvailable: "可", settlementDate: "2026-05-31", createdAt: Date.now() - 47000 },
     ],
     samples: [
-      { id: "sample-1", knitterId: "knitter-1", receivedDate: today(), imageData: "", status: "已到貨", style: "背心", hasTutorial: "是", price: 980, settled: "未支付", createdAt: Date.now() - 46000 },
+      { id: "sample-1", knitterId: "knitter-1", sendDate: "2026-04-20", leadDays: 14, receivedDate: today(), imageData: "", status: "已到貨", style: "背心", hasTutorial: "是", price: 980, settled: "未支付", createdAt: Date.now() - 46000 },
     ],
     announcements: [
       { id: "ann-1", title: "秦時線 OA 上線", content: "請各部門每日更新進貨、銷貨、直播與出貨資料。", author: "管理者", createdAt: Date.now() - 60000 },
@@ -3035,6 +3147,7 @@ function bindEvents() {
     event.preventDefault();
     addSample(event.currentTarget);
   });
+  $("#sampleKnitter").addEventListener("change", updateSampleLeadDays);
   $("#staffForm").addEventListener("submit", (event) => {
     event.preventDefault();
     addStaff(event.currentTarget);
