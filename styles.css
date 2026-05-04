@@ -930,6 +930,35 @@ input[type="file"] {
   background: rgba(255, 250, 241, .78);
 }
 
+[data-knitter-panel="yarnShipments"].workspace.active {
+  grid-template-columns: minmax(520px, 0.95fr) minmax(560px, 1.15fr);
+}
+
+.yarn-shipment-editor {
+  gap: 16px;
+}
+
+.yarn-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.yarn-note-field,
+.yarn-image-field,
+.yarn-image-preview {
+  grid-column: 1 / -1;
+}
+
+.yarn-image-preview {
+  min-height: 128px;
+}
+
+.yarn-lines {
+  overflow-x: auto;
+}
+
 .trade-lines-head {
   display: flex;
   justify-content: space-between;
@@ -960,7 +989,8 @@ input[type="file"] {
 
 .yarn-line-head,
 .yarn-line-row {
-  grid-template-columns: 1fr 1.15fr .8fr .72fr .72fr 42px;
+  grid-template-columns: minmax(110px, 1fr) minmax(140px, 1.15fr) minmax(100px, .8fr) minmax(96px, .72fr) minmax(92px, .72fr) 42px;
+  min-width: 680px;
 }
 
 .trade-line-head {
@@ -1528,6 +1558,9 @@ tr:last-child td { border-bottom: 0; }
   .topbar, .top-actions { align-items: stretch; flex-direction: column; }
   .search { width: 100%; }
   .metrics, .dashboard-grid, .workspace { grid-template-columns: 1fr; }
+  [data-knitter-panel="yarnShipments"].workspace.active {
+    grid-template-columns: 1fr;
+  }
   .inline-form { grid-template-columns: 1fr; }
   .panel.wide,
   .panel,
@@ -1673,8 +1706,18 @@ tr:last-child td { border-bottom: 0; }
   .trade-line-row { grid-template-columns: 42px 1fr 1fr 42px; }
   .trade-line-row input[name="composition"] { grid-column: 2 / 4; }
   .yarn-line-head { display: none; }
-  .yarn-line-row { grid-template-columns: 1fr 1fr 42px; }
-  .yarn-line-row input[name="name"] { grid-column: 1 / 3; }
+  .yarn-form-grid { grid-template-columns: 1fr; }
+  .yarn-lines { overflow-x: visible; }
+  .yarn-line-row {
+    grid-template-columns: 1fr 1fr 42px;
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid rgba(32, 220, 224, .28);
+    border-radius: 10px;
+    background: rgba(255,253,247,.72);
+  }
+  .yarn-line-row input[name="name"],
+  .yarn-line-row input[name="color"] { grid-column: 1 / 3; }
   .workspace,
   .dashboard-grid {
     gap: 12px;

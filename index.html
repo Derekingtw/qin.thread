@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260504-02" />
+    <link rel="stylesheet" href="styles.css?v=20260504-07" />
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
@@ -618,14 +618,16 @@
         <div class="workspace knitter-panel" data-knitter-panel="yarnShipments">
           <form class="editor yarn-shipment-editor" id="yarnShipmentForm">
             <h2>毛線寄送紀錄</h2>
-            <label>織女姓名<select required name="knitterId" id="yarnShipmentKnitter"></select></label>
-            <label>公司&工作室<input readonly name="studioName" id="yarnShipmentStudio" placeholder="依織女資料帶入" /></label>
-            <label>寄送單號<input required name="trackingNo" placeholder="SF123456789" /></label>
-            <label>寄送日期<input required name="sendDate" type="date" /></label>
-            <input type="hidden" name="imageData" />
-            <label>圖片<input name="imageFile" id="yarnShipmentImageInput" type="file" accept="image/*" /></label>
-            <div class="image-preview" id="yarnShipmentImagePreview">尚未選擇圖片</div>
-            <label>備註<input name="note" placeholder="包裝、物流或特殊說明" /></label>
+            <div class="yarn-form-grid">
+              <label>織女姓名<select required name="knitterId" id="yarnShipmentKnitter"></select></label>
+              <label>公司&工作室<input readonly name="studioName" id="yarnShipmentStudio" placeholder="依織女資料帶入" /></label>
+              <label>寄送單號<input required name="trackingNo" placeholder="SF123456789" /></label>
+              <label>寄送日期<input required name="sendDate" type="date" /></label>
+              <label class="yarn-note-field">備註<input name="note" placeholder="包裝、物流或特殊說明" /></label>
+              <input type="hidden" name="imageData" />
+              <label class="yarn-image-field">圖片<input name="imageFile" id="yarnShipmentImageInput" type="file" accept="image/*" /></label>
+              <div class="image-preview yarn-image-preview" id="yarnShipmentImagePreview">尚未選擇圖片</div>
+            </div>
             <div class="yarn-lines">
               <div class="trade-lines-head">
                 <strong>寄送明細</strong>
@@ -1049,6 +1051,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260504-06"></script>
+    <script src="app.js?v=20260504-07"></script>
   </body>
 </html>
