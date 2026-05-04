@@ -560,6 +560,7 @@
             <input type="hidden" name="id" />
             <label>簽約日期<input required name="contractDate" type="date" /></label>
             <label>織女姓名<input required name="name" placeholder="織女姓名" /></label>
+            <label>公司&工作室名稱<input name="studioName" placeholder="公司或工作室名稱" /></label>
             <label>身分證號/統一信用社會代碼<input name="identityCode" /></label>
             <label>聯繫電話<input name="contactPhone" type="tel" /></label>
             <label>微信帳號<input name="wechat" /></label>
@@ -580,7 +581,7 @@
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2>織女清單</h2><span id="knitterCount" class="pill">0 筆</span></div>
-            <div class="table-wrap"><table><thead><tr><th>簽約日期</th><th>織女姓名</th><th>電話</th><th>微信</th><th>QQ</th><th>身分證號/統一信用社會代碼</th><th>地址</th><th>樣衣款式</th><th>單價</th><th>交期</th><th>教程</th><th>結款日</th><th></th></tr></thead><tbody id="knitterRows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>簽約日期</th><th>織女姓名</th><th>公司&工作室名稱</th><th>電話</th><th>微信</th><th>QQ</th><th>身分證號/統一信用社會代碼</th><th>地址</th><th>樣衣款式</th><th>單價</th><th>交期</th><th>教程</th><th>結款日</th><th></th></tr></thead><tbody id="knitterRows"></tbody></table></div>
           </section>
         </div>
         <div class="workspace knitter-panel" data-knitter-panel="samples">
@@ -1018,6 +1019,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260504-03"></script>
+    <script src="app.js?v=20260504-04"></script>
   </body>
 </html>
