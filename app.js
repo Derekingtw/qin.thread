@@ -1,8 +1,8 @@
 const STORAGE_KEY = "oa_inventory_state_v1";
 const SESSION_KEY = "oa_inventory_session_v1";
-const ALL_VIEWS = ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "contracts", "leave", "approvals", "payroll", "intl", "tracking", "production", "growth", "settings"];
-const ERP_VIEWS = ["products", "partners", "inventory", "purchases", "sales", "shipping", "tracking", "production", "contracts"];
-const ERP_TAB_LABELS = { products: "商品", partners: "往來單位", inventory: "庫存", purchases: "進貨", sales: "銷貨", shipping: "出貨單", tracking: "貨品追蹤", production: "生產圖", contracts: "合同" };
+const ALL_VIEWS = ["dashboard", "products", "partners", "inventory", "purchases", "sales", "shipping", "invoices", "tracking", "production", "contracts", "liveSales", "live", "knitters", "staff", "leave", "approvals", "payroll", "intl", "growth", "settings"];
+const ERP_VIEWS = ["products", "partners", "inventory", "purchases", "sales", "shipping", "invoices", "tracking", "production", "contracts"];
+const ERP_TAB_LABELS = { products: "商品", partners: "往來單位", inventory: "庫存", purchases: "進貨", sales: "銷貨", shipping: "出貨單", invoices: "發票上傳", tracking: "貨品追蹤", production: "生產圖", contracts: "合同" };
 const LIVE_SYSTEM_VIEWS = ["live", "liveSales"];
 const VIEW_LABELS = { dashboard: "總覽", knitters: "織女系統", staff: "人事資料", leave: "請假申請", approvals: "審批系統", payroll: "會計系統", intl: "國貿系統", growth: "養成系統", settings: "資料設定" };
 
@@ -15,6 +15,7 @@ const money = (value) => Number(value || 0).toLocaleString("zh-TW", { style: "cu
 const number = (value) => Number(value || 0).toLocaleString("zh-TW");
 const ceilNumber = (value) => Math.ceil(Number(value || 0));
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_INVOICE_FILE_BYTES = 8 * 1024 * 1024;
 const MAX_BACKGROUND_BYTES = 2 * 1024 * 1024;
 const normalizePhone = (value) => String(value || "").replace(/[^\d+]/g, "").trim();
 const phoneDigits = (value) => normalizePhone(value).replace(/\D/g, "");
@@ -42,6 +43,7 @@ const defaultState = () => ({
   partners: [],
   purchases: [],
   sales: [],
+  invoiceUploads: [],
   yarnTracks: [],
   liveShows: [],
   liveSales: [],
@@ -131,6 +133,7 @@ function isMeaningfulState(value) {
       (value.partners || []).length ||
       (value.purchases || []).length ||
       (value.sales || []).length ||
+      (value.invoiceUploads || []).length ||
       (value.liveSales || []).length ||
       (value.knitters || []).length ||
       (value.samples || []).length ||
@@ -186,6 +189,25 @@ function normalizeState(saved) {
   }));
   next.purchases = (next.purchases || []).map((doc) => ({ ...doc, vat: doc.vat || findProductIn(saved, doc.productId)?.vat || "" }));
   next.sales = (next.sales || []).map((doc) => ({ ...doc, vat: doc.vat || "" }));
+  next.invoiceUploads = (next.invoiceUploads || []).map((item) => ({
+    ...item,
+    totalAmount: Number(item.totalAmount || 0),
+    taxAmount: Number(item.taxAmount || 0),
+    totalWithTax: Number(item.totalWithTax || 0),
+    fileData: item.fileData || "",
+    fileName: item.fileName || "",
+    fileType: item.fileType || "",
+    lines: Array.isArray(item.lines) ? item.lines.map((line) => ({
+      itemName: line.itemName || "",
+      spec: line.spec || "",
+      unit: line.unit || "",
+      qty: Number(line.qty || 0),
+      unitPrice: Number(line.unitPrice || 0),
+      amount: Number(line.amount || 0),
+      taxRate: line.taxRate || "",
+      taxAmount: Number(line.taxAmount || 0),
+    })) : [],
+  }));
   next.shipments = (next.shipments || []).map((doc) => ({
     ...doc,
     partnerId: doc.partnerId || "",
@@ -288,9 +310,9 @@ function permissionsForStaffRole(role) {
   if (normalized === "管理員") return [...ALL_VIEWS];
   if (normalized === "代理管理員") return ALL_VIEWS.filter((view) => view !== "settings");
   if (normalized === "核心人員") {
-    return ["dashboard", "products", "inventory", "purchases", "sales", "shipping", "liveSales", "live", "knitters", "partners", "staff", "leave", "approvals", "payroll", "intl", "tracking", "production", "growth"];
+    return ["dashboard", "products", "partners", "inventory", "purchases", "sales", "shipping", "invoices", "liveSales", "live", "knitters", "staff", "leave", "approvals", "payroll", "intl", "tracking", "production", "growth"];
   }
-  return ["dashboard", "products", "inventory", "sales", "liveSales", "leave", "growth"];
+  return ["dashboard", "products", "inventory", "sales", "invoices", "liveSales", "leave", "growth"];
 }
 
 function navViewFor(view) {
@@ -1082,6 +1104,29 @@ function renderInventory() {
   }).join("") || emptyRow(11);
 }
 
+function invoiceLineSummary(lines = []) {
+  return lines.map((line) => `${line.itemName || "-"} ${line.spec || ""} ${number(line.qty)}${line.unit || ""} 稅率${line.taxRate || "-"}`).join("；") || "-";
+}
+
+function renderInvoices() {
+  const rows = currentRows(state.invoiceUploads || []).sort((a, b) => `${b.invoiceDate}${b.createdAt}`.localeCompare(`${a.invoiceDate}${a.createdAt}`));
+  $("#invoiceUploadCount").textContent = `${rows.length} 筆`;
+  $("#invoiceUploadRows").innerHTML = rows.map((item) => `<tr>
+    <td>${item.fileName ? `<a href="${item.fileData}" download="${escapeHtml(item.fileName)}">${escapeHtml(item.fileName)}</a>` : "-"}</td>
+    <td>${item.invoiceType || "-"}</td>
+    <td>${item.invoiceNo || "-"}</td>
+    <td>${item.invoiceDate || "-"}</td>
+    <td>${item.buyerName || "-"}</td>
+    <td>${item.buyerTaxId || "-"}</td>
+    <td>${item.sellerName || "-"}</td>
+    <td class="num">${money(item.totalAmount)}</td>
+    <td class="num">${money(item.taxAmount)}</td>
+    <td class="num">${money(item.totalWithTax)}</td>
+    <td>${invoiceLineSummary(item.lines)}</td>
+    <td>${rowActions("invoiceUpload", item.id)}</td>
+  </tr>`).join("") || emptyRow(12);
+}
+
 function progressMark(status, step) {
   const order = ["胚紗生產中", "染色中", "打包中", "已完成"];
   return order.indexOf(status) >= order.indexOf(step) ? "●" : "";
@@ -1617,6 +1662,25 @@ function addYarnShipmentLine(count = 1) {
   renderYarnShipmentLineInputs([...currentYarnShipmentLineDrafts(), ...Array.from({ length: count }, () => ({}))], 0);
 }
 
+function invoiceLineTemplate() {
+  return `<div class="invoice-line-row" data-invoice-line>
+    <input name="lineItemName" placeholder="項目名稱" />
+    <input name="lineSpec" placeholder="規格型號" />
+    <input name="lineUnit" placeholder="單位" />
+    <input name="lineQty" type="number" min="0" step="0.01" placeholder="數量" />
+    <input name="lineUnitPrice" type="number" min="0" step="0.01" placeholder="單價" />
+    <input name="lineAmount" type="number" min="0" step="0.01" placeholder="金額" />
+    <input name="lineTaxRate" placeholder="稅率" value="13%" />
+    <input name="lineTaxAmount" type="number" min="0" step="0.01" placeholder="稅額" />
+    <button class="small-btn delete" data-remove-invoice-line type="button" aria-label="刪除明細"><i data-lucide="x"></i></button>
+  </div>`;
+}
+
+function addInvoiceLine() {
+  $("#invoiceLineInputs").insertAdjacentHTML("beforeend", invoiceLineTemplate());
+  if (window.lucide) window.lucide.createIcons();
+}
+
 function removeYarnShipmentLine(index) {
   const rows = currentYarnShipmentLineDrafts();
   rows.splice(index, 1);
@@ -1912,6 +1976,7 @@ function renderAll() {
   renderDocs("purchase");
   renderDocs("sale");
   renderInventory();
+  renderInvoices();
   renderTracking();
   renderProduction();
   renderLive();
@@ -2040,6 +2105,17 @@ function resetForm(form) {
   if (form.id === "growthForm") {
     form.elements.date.value = today();
     form.elements.xp.value = 10;
+  }
+  if (form.id === "invoiceUploadForm") {
+    form.elements.fileData.value = "";
+    form.elements.fileName.value = "";
+    form.elements.fileType.value = "";
+    $("#invoiceFilePreview").textContent = "支援 JPG、PNG、WEBP、PDF，單檔小於 8MB";
+    form.querySelectorAll("[data-invoice-line]").forEach((row, index) => {
+      if (index > 0) row.remove();
+      row.querySelectorAll("input").forEach((input) => input.value = "");
+      row.querySelector("[name='lineTaxRate']").value = "13%";
+    });
   }
   if (form.id === "sellProductForm") {
     form.elements.sku.value = generateSaleSku();
@@ -2191,6 +2267,31 @@ function handleBackgroundImage(event) {
       toast("背景圖已套用");
     };
     image.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleInvoiceFile(event) {
+  const file = event.target.files?.[0];
+  const form = $("#invoiceUploadForm");
+  if (!file || !form) return;
+  const allowed = file.type.startsWith("image/") || file.type === "application/pdf";
+  if (!allowed) {
+    toast("發票附件請上傳圖片或 PDF");
+    event.target.value = "";
+    return;
+  }
+  if (file.size > MAX_INVOICE_FILE_BYTES) {
+    toast("發票附件不可超過 8MB");
+    event.target.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    form.elements.fileData.value = reader.result;
+    form.elements.fileName.value = file.name;
+    form.elements.fileType.value = file.type;
+    $("#invoiceFilePreview").textContent = `${file.name} · ${formatBytes(file.size)}`;
   };
   reader.readAsDataURL(file);
 }
@@ -2411,6 +2512,66 @@ function addDoc(form, kind) {
   renderAll();
 }
 
+function invoiceLinesFromForm(form) {
+  return [...form.querySelectorAll("[data-invoice-line]")].map((row) => {
+    const qty = Number(row.querySelector("[name='lineQty']").value || 0);
+    const unitPrice = Number(row.querySelector("[name='lineUnitPrice']").value || 0);
+    const amount = Number(row.querySelector("[name='lineAmount']").value || (qty * unitPrice));
+    return {
+      itemName: row.querySelector("[name='lineItemName']").value.trim(),
+      spec: row.querySelector("[name='lineSpec']").value.trim(),
+      unit: row.querySelector("[name='lineUnit']").value.trim(),
+      qty,
+      unitPrice,
+      amount,
+      taxRate: row.querySelector("[name='lineTaxRate']").value.trim(),
+      taxAmount: Number(row.querySelector("[name='lineTaxAmount']").value || 0),
+    };
+  }).filter((line) => line.itemName || line.spec || line.qty || line.amount || line.taxAmount);
+}
+
+function addInvoiceUpload(form) {
+  const data = Object.fromEntries(new FormData(form));
+  const lines = invoiceLinesFromForm(form);
+  if (!data.fileData) return toast("請上傳發票附件");
+  if (!data.invoiceNo?.trim()) return toast("請填寫發票號碼");
+  if (!data.buyerName?.trim() || !data.buyerTaxId?.trim()) return toast("購買方名稱與納稅識別號/統一社會信用代碼必填");
+  if (!data.sellerName?.trim() || !data.sellerTaxId?.trim()) return toast("銷售方名稱與納稅識別號/統一社會信用代碼必填");
+  if (!lines.length) return toast("請至少填寫一筆發票明細");
+  state.invoiceUploads = [...(state.invoiceUploads || []), {
+    id: uid("invoice"),
+    invoiceType: data.invoiceType,
+    invoiceNo: data.invoiceNo.trim(),
+    invoiceCode: data.invoiceCode?.trim() || "",
+    invoiceDate: data.invoiceDate,
+    checkCode: data.checkCode?.trim() || "",
+    buyerName: data.buyerName.trim(),
+    buyerTaxId: data.buyerTaxId.trim(),
+    buyerAddressPhone: data.buyerAddressPhone?.trim() || "",
+    buyerBankAccount: data.buyerBankAccount?.trim() || "",
+    sellerName: data.sellerName.trim(),
+    sellerTaxId: data.sellerTaxId.trim(),
+    sellerAddressPhone: data.sellerAddressPhone?.trim() || "",
+    sellerBankAccount: data.sellerBankAccount?.trim() || "",
+    totalAmount: Number(data.totalAmount || 0),
+    taxAmount: Number(data.taxAmount || 0),
+    totalWithTax: Number(data.totalWithTax || 0),
+    drawer: data.drawer?.trim() || "",
+    payee: data.payee?.trim() || "",
+    reviewer: data.reviewer?.trim() || "",
+    remark: data.remark?.trim() || "",
+    fileData: data.fileData,
+    fileName: data.fileName,
+    fileType: data.fileType,
+    lines,
+    createdAt: Date.now(),
+  }];
+  saveState();
+  resetForm(form);
+  toast("發票資料已上傳");
+  renderAll();
+}
+
 function deleteItem(type, id) {
   if (type === "position") {
     if ((state.staff || []).some((item) => item.title === id)) return toast("已有員工使用此職位，請先調整人事資料");
@@ -2426,7 +2587,7 @@ function deleteItem(type, id) {
       ? state.purchases.some((doc) => doc.partnerId === id) || state.sales.some((doc) => doc.partnerId === id)
       : false;
   if (hasDoc) return toast("已有單據使用，請保留資料");
-  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", yarnShipment: "yarnShipments", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs", growthRecord: "growthRecords" };
+  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", invoiceUpload: "invoiceUploads", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", yarnShipment: "yarnShipments", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs", growthRecord: "growthRecords" };
   if (type === "staff") {
     const staff = (state.staff || []).find((item) => item.id === id);
     pruneUserAccountsForDeletedStaff(id, staff?.phone);
@@ -3228,6 +3389,7 @@ function bindEvents() {
   $("#staffAvatarInput").addEventListener("change", (event) => handleImageUpload(event, "staffForm", "staffAvatarPreview", "avatarData"));
   $("#sampleImageInput").addEventListener("change", (event) => handleImageUpload(event, "sampleForm", "sampleImagePreview"));
   $("#yarnShipmentImageInput").addEventListener("change", (event) => handleImageUpload(event, "yarnShipmentForm", "yarnShipmentImagePreview"));
+  $("#invoiceFileInput").addEventListener("change", handleInvoiceFile);
   $("#backgroundImageInput").addEventListener("change", handleBackgroundImage);
   $("#appearanceForm").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -3253,6 +3415,11 @@ function bindEvents() {
     if (remove) removeYarnShipmentLine(Number(remove.dataset.removeYarnLine));
   });
   $("#addYarnShipmentLineBtn").addEventListener("click", () => addYarnShipmentLine());
+  $("#addInvoiceLineBtn").addEventListener("click", addInvoiceLine);
+  $("#invoiceLineInputs").addEventListener("click", (event) => {
+    const remove = event.target.closest("[data-remove-invoice-line]");
+    if (remove && $("#invoiceLineInputs").querySelectorAll("[data-invoice-line]").length > 1) remove.closest("[data-invoice-line]").remove();
+  });
   $("#tradeDocSelect").addEventListener("change", (event) => setActiveTradeDoc(event.target.value));
   $("#tradeDocRows").addEventListener("click", (event) => {
     const selectButton = event.target.closest("[data-select-trade-doc]");
@@ -3306,6 +3473,10 @@ function bindEvents() {
   $("#saleForm").addEventListener("submit", (event) => {
     event.preventDefault();
     addDoc(event.currentTarget, "sale");
+  });
+  $("#invoiceUploadForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addInvoiceUpload(event.currentTarget);
   });
   $("#trackingForm").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -3472,6 +3643,7 @@ async function init() {
   resetForm($("#sellProductForm"));
   resetForm($("#purchaseForm"));
   resetForm($("#saleForm"));
+  resetForm($("#invoiceUploadForm"));
   resetForm($("#trackingForm"));
   resetForm($("#liveForm"));
   resetForm($("#shipmentForm"));

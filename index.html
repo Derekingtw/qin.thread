@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260504-07" />
+    <link rel="stylesheet" href="styles.css?v=20260504-08" />
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
@@ -401,6 +401,85 @@
             </table>
           </div>
         </section>
+      </section>
+
+      <section class="view" id="invoices">
+        <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類">
+          <button class="section-tab" data-system-tab="products" type="button">商品</button>
+          <button class="section-tab" data-system-tab="partners" type="button">往來單位</button>
+          <button class="section-tab" data-system-tab="inventory" type="button">庫存</button>
+          <button class="section-tab" data-system-tab="purchases" type="button">進貨</button>
+          <button class="section-tab" data-system-tab="sales" type="button">銷貨</button>
+          <button class="section-tab" data-system-tab="shipping" type="button">出貨單</button>
+          <button class="section-tab active" data-system-tab="invoices" type="button">發票上傳</button>
+          <button class="section-tab" data-system-tab="tracking" type="button">貨品追蹤</button>
+          <button class="section-tab" data-system-tab="production" type="button">生產圖</button>
+        </div>
+        <div class="workspace invoice-workspace">
+          <form class="editor invoice-upload-editor" id="invoiceUploadForm">
+            <h2>發票上傳</h2>
+            <input type="hidden" name="fileData" />
+            <input type="hidden" name="fileName" />
+            <input type="hidden" name="fileType" />
+            <div class="compliance-note">依中國稅務發票常用欄位設計：發票號碼、開票日期、購買方/銷售方納稅識別號、地址電話、開戶行及帳號、項目明細、稅率稅額、價稅合計、備註與開票人等。</div>
+            <label class="invoice-file-field">發票附件<input required name="file" id="invoiceFileInput" type="file" accept="image/*,.pdf,application/pdf" /></label>
+            <div class="file-preview" id="invoiceFilePreview">支援 JPG、PNG、WEBP、PDF，單檔小於 8MB</div>
+            <div class="invoice-form-grid">
+              <label>發票類型<select name="invoiceType"><option>數電票</option><option>增值稅專用發票</option><option>增值稅普通發票</option><option>機動車發票</option><option>其他</option></select></label>
+              <label>發票號碼<input required name="invoiceNo" /></label>
+              <label>發票代碼<input name="invoiceCode" placeholder="數電票可留空" /></label>
+              <label>開票日期<input required name="invoiceDate" type="date" /></label>
+              <label>校驗碼<input name="checkCode" /></label>
+              <label>開票人<input name="drawer" /></label>
+            </div>
+            <div class="invoice-party-grid">
+              <fieldset>
+                <legend>購買方資訊</legend>
+                <label>購買方名稱<input required name="buyerName" /></label>
+                <label>納稅識別號/統一社會信用代碼<input required name="buyerTaxId" /></label>
+                <label>地址、電話<input name="buyerAddressPhone" /></label>
+                <label>開戶行及帳號<input name="buyerBankAccount" /></label>
+              </fieldset>
+              <fieldset>
+                <legend>銷售方資訊</legend>
+                <label>銷售方名稱<input required name="sellerName" /></label>
+                <label>納稅識別號/統一社會信用代碼<input required name="sellerTaxId" /></label>
+                <label>地址、電話<input name="sellerAddressPhone" /></label>
+                <label>開戶行及帳號<input name="sellerBankAccount" /></label>
+              </fieldset>
+            </div>
+            <div class="invoice-lines">
+              <div class="trade-lines-head"><strong>發票明細</strong><button class="ghost-light-btn" id="addInvoiceLineBtn" type="button">新增明細</button></div>
+              <div class="invoice-line-head"><span>項目名稱</span><span>規格型號</span><span>單位</span><span>數量</span><span>單價</span><span>金額</span><span>稅率</span><span>稅額</span></div>
+              <div id="invoiceLineInputs">
+                <div class="invoice-line-row" data-invoice-line>
+                  <input name="lineItemName" placeholder="項目名稱" />
+                  <input name="lineSpec" placeholder="規格型號" />
+                  <input name="lineUnit" placeholder="單位" />
+                  <input name="lineQty" type="number" min="0" step="0.01" placeholder="數量" />
+                  <input name="lineUnitPrice" type="number" min="0" step="0.01" placeholder="單價" />
+                  <input name="lineAmount" type="number" min="0" step="0.01" placeholder="金額" />
+                  <input name="lineTaxRate" placeholder="稅率" value="13%" />
+                  <input name="lineTaxAmount" type="number" min="0" step="0.01" placeholder="稅額" />
+                  <button class="small-btn delete" data-remove-invoice-line type="button" aria-label="刪除明細"><i data-lucide="x"></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="invoice-form-grid">
+              <label>合計金額<input required name="totalAmount" type="number" min="0" step="0.01" /></label>
+              <label>合計稅額<input required name="taxAmount" type="number" min="0" step="0.01" /></label>
+              <label>價稅合計<input required name="totalWithTax" type="number" min="0" step="0.01" /></label>
+              <label>收款人<input name="payee" /></label>
+              <label>復核人<input name="reviewer" /></label>
+              <label>備註<input name="remark" /></label>
+            </div>
+            <button class="primary-btn" type="submit"><i data-lucide="upload"></i><span>儲存發票</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>發票台帳</h2><span id="invoiceUploadCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>附件</th><th>類型</th><th>發票號碼</th><th>開票日期</th><th>購買方</th><th>購方稅號</th><th>銷售方</th><th>金額</th><th>稅額</th><th>價稅合計</th><th>明細</th><th></th></tr></thead><tbody id="invoiceUploadRows"></tbody></table></div>
+          </section>
+        </div>
       </section>
 
       <section class="view" id="tracking">
@@ -1051,6 +1130,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260504-07"></script>
+    <script src="app.js?v=20260504-08"></script>
   </body>
 </html>
