@@ -423,6 +423,10 @@ h2 {
   gap: 18px;
 }
 
+.dashboard-grid > .panel.wide {
+  grid-column: 1 / -1;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
