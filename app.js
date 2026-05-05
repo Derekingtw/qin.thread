@@ -1757,7 +1757,7 @@ function renderIntl() {
   $("#tradeDocCount").textContent = `${docs.length} 筆`;
   $("#tradeDocRows").innerHTML = docs.map((doc) => {
     const totals = tradeTotals(doc.lines || []);
-    return `<tr class="${doc.id === activeTradeDocId ? "selected-row" : ""}" data-trade-select="${doc.id}"><td>${normalizeTradeNo(doc.no)}</td><td>${doc.date || "-"}</td><td>${doc.company || "-"}</td><td>${doc.from || "-"}</td><td>${doc.product || "-"}</td><td class="num">${number(totals.nw)}</td><td class="num">${number(totals.amount)}</td><td><div class="row-actions"><button class="small-btn" data-select-trade-doc="${doc.id}" type="button" aria-label="瀏覽"><i data-lucide="eye"></i></button>${rowActions("tradeDoc", doc.id, true)}</div></td></tr>`;
+    return `<tr class="${doc.id === activeTradeDocId ? "selected-row" : ""}" data-trade-select="${doc.id}"><td>${normalizeTradeNo(doc.no)}</td><td>${doc.date || "-"}</td><td>${doc.company || "-"}</td><td>${doc.from || "-"}</td><td>${doc.product || "-"}</td><td class="num">${number(totals.nw)}</td><td class="num">${number(totals.amount)}</td><td><div class="row-actions trade-row-actions"><button class="text-small-btn" data-select-trade-doc="${doc.id}" type="button">瀏覽</button><button class="text-small-btn" data-edit="tradeDoc" data-id="${doc.id}" type="button">編輯</button><button class="text-small-btn delete" data-delete="tradeDoc" data-id="${doc.id}" type="button">刪除</button></div></td></tr>`;
   }).join("") || emptyRow(8);
   const select = $("#tradeDocSelect");
   if (select) {
