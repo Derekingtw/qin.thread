@@ -8,10 +8,28 @@ const port = Number(process.env.PORT || 4173);
 const dataDir = join(root, "data");
 const stateFile = join(dataDir, "oa-state.json");
 const backupFile = join(dataDir, "oa-state.backup.json");
+const pwaHead = `
+    <meta name="theme-color" content="#9f2f24" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="秦時線 OA" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/assets/qinxian-logo.svg" type="image/svg+xml" />`;
+const pwaScript = `
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js").catch(() => {});
+        });
+      }
+    </script>`;
 const types = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
+  ".png": "image/png",
   ".md": "text/plain; charset=utf-8",
   ".ai": "application/pdf",
   ".svg": "image/svg+xml; charset=utf-8",
@@ -93,6 +111,13 @@ createServer(async (req, res) => {
   }
 
   res.writeHead(200, { "content-type": types[extname(filePath)] || "application/octet-stream" });
+  if (requestPath === "/index.html") {
+    const html = await readFile(filePath, "utf8");
+    res.end(html
+      .replace("</head>", `${pwaHead}\n  </head>`)
+      .replace("</body>", `${pwaScript}\n  </body>`));
+    return;
+  }
   createReadStream(filePath).pipe(res);
 }).listen(port, () => {
   console.log(`OA system running at http://localhost:${port}`);

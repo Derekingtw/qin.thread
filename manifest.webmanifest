@@ -1,0 +1,22 @@
+{
+  "name": "秦時線 OA 系統",
+  "short_name": "秦時線 OA",
+  "description": "秦時線 ERP、國貿、直播、織女、人事、請假、審批與會計系統。",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fffaf0",
+  "theme_color": "#9f2f24",
+  "categories": ["business", "productivity"],
+  "lang": "zh-Hant",
+  "icons": [
+    {
+      "src": "assets/qinxian-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
