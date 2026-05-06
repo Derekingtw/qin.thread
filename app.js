@@ -17,6 +17,11 @@ const ceilNumber = (value) => Math.ceil(Number(value || 0));
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const MAX_INVOICE_FILE_BYTES = 8 * 1024 * 1024;
 const MAX_BACKGROUND_BYTES = 2 * 1024 * 1024;
+const TRADE_COMPANY_HEADER = {
+  name: "HON TEXT TRADING CO., LTD.",
+  address: "3 F., No. 57, Dayong St., Zhonghe Dist., New Taipei City 23579, Taiwan (R.O.C.)",
+  contact: "TEL:+886-(02)2942-1958   FAX:+886-(02)2942-1928",
+};
 const normalizePhone = (value) => String(value || "").replace(/[^\d+]/g, "").trim();
 const phoneDigits = (value) => normalizePhone(value).replace(/\D/g, "");
 const staffRoleAliases = {
@@ -1749,6 +1754,11 @@ function renderTradeSheet(doc, mode = intlTab) {
   const totalValueCurrency = doc.totalValueCurrency || depositCurrency;
   $("#tradePreviewTitle").textContent = title;
   return `<div class="trade-document ${isPacking ? "packing" : ""}">
+    <div class="trade-company-header">
+      <strong>${tradeCell(TRADE_COMPANY_HEADER.name)}</strong>
+      <span>${tradeCell(TRADE_COMPANY_HEADER.address)}</span>
+      <span>${tradeCell(TRADE_COMPANY_HEADER.contact)}</span>
+    </div>
     <div class="trade-doc-title">${title}</div>
     <div class="trade-doc-meta">NO: ${tradeCell(normalizeTradeNo(doc.no))}</div>
     <div class="trade-info-grid">
@@ -1821,6 +1831,9 @@ function tradeWordStyles() {
     @page { size: A4 landscape; margin: 8mm; }
     body { margin: 0; font-family: "Courier New", "Microsoft JhengHei", monospace; color: #101010; background: #fff; }
     .trade-document { width: 100%; box-sizing: border-box; padding: 7mm; font-weight: 700; border: 2px solid #1f527c; }
+    .trade-company-header { padding: 0 0 8px; text-align: center; line-height: 1.35; color: #111; border-bottom: 1px solid #1f527c; }
+    .trade-company-header strong { display: block; font-size: 15pt; letter-spacing: 1px; }
+    .trade-company-header span { display: block; font-size: 8.5pt; }
     .trade-doc-title { padding: 10px 12px; background: #1f527c; color: #fff; text-align: center; font-size: 24pt; letter-spacing: 2px; border-bottom: 4px solid #d9d3b8; }
     .trade-doc-meta { padding: 8px 0; text-align: right; color: #1f527c; font-size: 12pt; }
     .trade-info-grid { display: table; width: 100%; table-layout: fixed; margin: 10px 0 16px; border-spacing: 8px 0; }
@@ -1896,20 +1909,26 @@ function drawTradePdfHeader(pdf, tradeDoc, mode) {
   pdf.setDrawColor(31, 82, 124);
   pdf.setLineWidth(0.5);
   pdf.line(10, 10, 287, 10);
-  pdf.line(10, 25, 287, 25);
+  pdf.setTextColor(0, 0, 0);
+  pdf.setFontSize(13);
+  pdf.text(TRADE_COMPANY_HEADER.name, 148.5, 17, { align: "center" });
+  pdf.setFontSize(7);
+  pdf.text(pdf.splitTextToSize(TRADE_COMPANY_HEADER.address, 210), 148.5, 22, { align: "center" });
+  pdf.text(TRADE_COMPANY_HEADER.contact, 148.5, 28, { align: "center" });
+  pdf.line(10, 32, 287, 32);
   pdf.setTextColor(31, 82, 124);
   pdf.setFontSize(20);
-  pdf.text(title, 148.5, 20, { align: "center" });
+  pdf.text(title, 148.5, 43, { align: "center" });
   pdf.setTextColor(31, 82, 124);
   pdf.setFontSize(11);
-  pdf.text(`NO: ${normalizeTradeNo(tradeDoc.no)}`, 285, 32, { align: "right" });
-  drawPdfBox(pdf, 10, 36, 86, 58, isPacking ? "BUYER (Linked from Invoice)" : "BUYER INFORMATION", [
+  pdf.text(`NO: ${normalizeTradeNo(tradeDoc.no)}`, 285, 54, { align: "right" });
+  drawPdfBox(pdf, 10, 58, 86, 58, isPacking ? "BUYER (Linked from Invoice)" : "BUYER INFORMATION", [
     ["Company:", tradeDoc.company],
     ["Consignee:", tradeDoc.consignee],
     ["Phone:", tradeDoc.phone],
     ["Address:", tradeDoc.address],
   ]);
-  drawPdfBox(pdf, 106, 36, 82, 58, "Traffic information", [
+  drawPdfBox(pdf, 106, 58, 82, 58, "Traffic information", [
     ["DATE:", String(tradeDoc.date || "").replaceAll("-", "/")],
     ["FROM:", tradeDoc.from],
     ["POL:", tradeDoc.portOfLoading],
@@ -1917,11 +1936,11 @@ function drawTradePdfHeader(pdf, tradeDoc, mode) {
     ["PRODUCT:", tradeDoc.product],
     ["TRANS:", tradeDoc.transaction],
   ]);
-  drawPdfBox(pdf, 198, 36, 89, 58, "Shipping Mark:", []);
+  drawPdfBox(pdf, 198, 58, 89, 58, "Shipping Mark:", []);
   pdf.setTextColor(0, 0, 0);
   pdf.setFont("courier", "bold");
   pdf.setFontSize(11);
-  pdf.text(pdf.splitTextToSize(buildShippingMark(tradeDoc.shippingBnos || tradeDoc.shippingBno || shippingBnoFromMark(tradeDoc.shippingMark || "")), 76), 242.5, 54, { align: "center" });
+  pdf.text(pdf.splitTextToSize(buildShippingMark(tradeDoc.shippingBnos || tradeDoc.shippingBno || shippingBnoFromMark(tradeDoc.shippingMark || "")), 76), 242.5, 76, { align: "center" });
 }
 
 function drawTradePdfTable(pdf, tradeDoc, mode) {
@@ -1935,7 +1954,7 @@ function drawTradePdfTable(pdf, tradeDoc, mode) {
     : [
       ["No.", 12], ["Yarn No.", 42], ["Count", 24], ["Composition", 70], ["Color", 28], ["N.W(KG)", 28], ["Unit Price", 30], ["Amount", 33],
     ];
-  let y = 102;
+  let y = 124;
   const x0 = 10;
   const rowH = 8;
   const header = () => {
