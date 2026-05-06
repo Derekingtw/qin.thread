@@ -508,6 +508,31 @@ input[type="file"] {
   font-size: 13px;
 }
 
+.currency-field {
+  height: 42px;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 253, 247, .92);
+  overflow: hidden;
+}
+
+.currency-field select,
+.currency-field input {
+  height: 40px;
+  border: 0;
+  background: transparent;
+}
+
+.currency-field select {
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--green-dark);
+  font-weight: 900;
+}
+
 .product-summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -882,6 +907,34 @@ input[type="file"] {
   height: 100%;
 }
 
+.shipping-mark-fixed {
+  display: grid;
+  gap: 8px;
+  min-height: 160px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 253, 247, .94);
+  align-content: start;
+}
+
+.shipping-mark-fixed b,
+.shipping-mark-fixed span {
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.shipping-mark-fixed span {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.shipping-mark-fixed input {
+  height: 40px;
+}
+
 #intl .intl-editor label:has(textarea):not(.shipping-mark-field) {
   grid-column: span 2;
 }
@@ -890,7 +943,7 @@ input[type="file"] {
   position: relative;
 }
 
-.auto-label > span,
+.auto-label > span:not(.currency-field),
 .auto-note {
   display: inline-flex;
   align-items: center;

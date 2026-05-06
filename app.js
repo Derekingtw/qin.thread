@@ -270,6 +270,10 @@ function normalizeState(saved) {
   next.tradeDocs = (next.tradeDocs || []).map((doc) => ({
     ...doc,
     no: normalizeTradeNo(doc.no),
+    shippingBno: doc.shippingBno || shippingBnoFromMark(doc.shippingMark || ""),
+    shippingMark: doc.shippingMark || buildShippingMark(doc.shippingBno || ""),
+    depositCurrency: doc.depositCurrency || doc.currency || "USD",
+    totalValueCurrency: doc.totalValueCurrency || doc.depositCurrency || doc.currency || "USD",
     lines: (doc.lines || []).map((line) => ({
       ...line,
       nw: Number(line.nw || 0),
@@ -1553,6 +1557,22 @@ function normalizeTradeNo(no = "") {
   return String(no || "").replace(/^MIT-(\d{2})-(\d{2})-(\d{3})$/, "MIT-$1$2-$3");
 }
 
+function shippingBnoFromMark(mark = "") {
+  const text = String(mark || "").trim();
+  const match = text.match(/B\/NO\s*[:：]?\s*([^\n\r]*)/i);
+  if (match) return match[1].trim();
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !/^HT$/i.test(line) && !/^\(IN\s+TRL\)$/i.test(line))
+    .join(" ")
+    .trim();
+}
+
+function buildShippingMark(bno = "") {
+  return `HT\n(IN TRL)\nB/NO:${String(bno || "").trim()}`;
+}
+
 function generateTradeNo(existingId = "") {
   const prefix = tradePrefix();
   const maxSeq = (state.tradeDocs || [])
@@ -1714,6 +1734,9 @@ function renderTradeSheet(doc, mode = intlTab) {
   const totals = tradeTotals(doc.lines || []);
   const isPacking = mode === "packing";
   const title = isPacking ? "COMMERCIAL PACKING" : "COMMERCIAL INVOICE";
+  const shippingMark = buildShippingMark(doc.shippingBno || shippingBnoFromMark(doc.shippingMark || ""));
+  const depositCurrency = doc.depositCurrency || "USD";
+  const totalValueCurrency = doc.totalValueCurrency || depositCurrency;
   $("#tradePreviewTitle").textContent = title;
   return `<div class="trade-document ${isPacking ? "packing" : ""}">
     <div class="trade-doc-title">${title}</div>
@@ -1735,7 +1758,7 @@ function renderTradeSheet(doc, mode = intlTab) {
       </div>
       <div class="trade-box mark">
         <h3>Shipping Mark:</h3>
-        <pre>${tradeCell(doc.shippingMark)}</pre>
+        <pre>${tradeCell(shippingMark)}</pre>
       </div>
     </div>
     <table class="trade-doc-table">
@@ -1746,7 +1769,7 @@ function renderTradeSheet(doc, mode = intlTab) {
       }).join("")}</tbody>
       <tfoot><tr><td colspan="5">TOTAL:</td><td>${number(totals.nw)}</td>${isPacking ? `<td>${number(totals.gw)}</td><td></td>` : `<td></td><td>${number(totals.amount)}</td>`}</tr></tfoot>
     </table>
-    ${isPacking ? "" : `<div class="trade-summary-boxes"><div><h3>Deposit</h3><p>USD <b>${number(doc.deposit || 0)}</b></p></div><div><h3>Total Value</h3><p>USD <b>${number(doc.totalValue || Math.max(0, totals.amount - Number(doc.deposit || 0)))}</b></p></div></div>`}
+    ${isPacking ? "" : `<div class="trade-summary-boxes"><div><h3>Deposit</h3><p>${tradeCell(depositCurrency)} <b>${number(doc.deposit || 0)}</b></p></div><div><h3>Total Value</h3><p>${tradeCell(totalValueCurrency)} <b>${number(doc.totalValue || Math.max(0, totals.amount - Number(doc.deposit || 0)))}</b></p></div></div>`}
   </div>`;
 }
 
@@ -1884,7 +1907,7 @@ function drawTradePdfHeader(pdf, tradeDoc, mode) {
   pdf.setTextColor(0, 0, 0);
   pdf.setFont("courier", "bold");
   pdf.setFontSize(11);
-  pdf.text(pdf.splitTextToSize(String(tradeDoc.shippingMark || ""), 76), 242.5, 54, { align: "center" });
+  pdf.text(pdf.splitTextToSize(buildShippingMark(tradeDoc.shippingBno || shippingBnoFromMark(tradeDoc.shippingMark || "")), 76), 242.5, 54, { align: "center" });
 }
 
 function drawTradePdfTable(pdf, tradeDoc, mode) {
@@ -1943,15 +1966,17 @@ function drawTradePdfTable(pdf, tradeDoc, mode) {
   });
   drawRow(isPacking ? ["", "", "", "", "TOTAL:", number(totals.nw), number(totals.gw), ""] : ["", "", "", "", "TOTAL:", number(totals.nw), "", number(totals.amount)]);
   if (!isPacking) {
+    const depositCurrency = tradeDoc.depositCurrency || "USD";
+    const totalValueCurrency = tradeDoc.totalValueCurrency || depositCurrency;
     y += 8;
     pdf.setFont("courier", "bold");
     pdf.setFontSize(10);
     pdf.rect(10, y, 46, 16);
     pdf.text("Deposit", 33, y + 6, { align: "center" });
-    pdf.text(`USD ${number(tradeDoc.deposit || 0)}`, 33, y + 13, { align: "center" });
+    pdf.text(`${depositCurrency} ${number(tradeDoc.deposit || 0)}`, 33, y + 13, { align: "center" });
     pdf.rect(76, y, 54, 16);
     pdf.text("Total Value", 103, y + 6, { align: "center" });
-    pdf.text(`USD ${number(tradeDoc.totalValue || Math.max(0, totals.amount - Number(tradeDoc.deposit || 0)))}`, 103, y + 13, { align: "center" });
+    pdf.text(`${totalValueCurrency} ${number(tradeDoc.totalValue || Math.max(0, totals.amount - Number(tradeDoc.deposit || 0)))}`, 103, y + 13, { align: "center" });
   }
 }
 
@@ -2092,6 +2117,12 @@ function fillForm(form, data) {
   if (form.id === "sampleForm") {
     renderImagePreview("sampleImagePreview", form.elements.imageData?.value || "");
   }
+  if (form.id === "tradeForm") {
+    form.elements.shippingBno.value = data.shippingBno || shippingBnoFromMark(data.shippingMark || "");
+    form.elements.depositCurrency.value = data.depositCurrency || data.currency || "USD";
+    form.elements.totalValueCurrency.value = data.totalValueCurrency || data.depositCurrency || data.currency || "USD";
+    updateTradeAutoFields();
+  }
 }
 
 function resetForm(form) {
@@ -2165,6 +2196,9 @@ function resetForm(form) {
     form.elements.from.value = "TAIWAN";
     form.elements.product.value = "YARN";
     form.elements.transaction.value = "T/T";
+    form.elements.shippingBno.value = "1~31";
+    form.elements.depositCurrency.value = "USD";
+    form.elements.totalValueCurrency.value = "USD";
     renderTradeLineInputs([], 5);
     updateTradeAutoFields();
   }
@@ -2886,6 +2920,9 @@ function addTradeDoc(form) {
   const lines = tradeLinesFromForm(form);
   if (!lines.length) return toast("請至少填寫一筆商品明細");
   const totals = tradeTotals(lines);
+  const shippingBno = data.shippingBno?.trim() || shippingBnoFromMark(data.shippingMark || "");
+  const depositCurrency = data.depositCurrency || "USD";
+  const totalValueCurrency = data.totalValueCurrency || depositCurrency;
   const doc = {
     id: data.id || uid("trade"),
     no: normalizeTradeNo(data.no || generateTradeNo(data.id)),
@@ -2897,7 +2934,10 @@ function addTradeDoc(form) {
     from: data.from.trim(),
     product: data.product.trim(),
     transaction: data.transaction.trim(),
-    shippingMark: data.shippingMark.trim(),
+    shippingBno,
+    shippingMark: buildShippingMark(shippingBno),
+    depositCurrency,
+    totalValueCurrency,
     deposit: Number(data.deposit || 0),
     totalValue: Math.max(0, totals.amount - Number(data.deposit || 0)),
     lines,
