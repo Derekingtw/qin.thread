@@ -2025,6 +2025,55 @@ function downloadTradePdf() {
   pdf.save(`${normalizeTradeNo(tradeDoc.no)}_${title}.pdf`);
 }
 
+async function downloadTradePdfFromCanvas() {
+  const tradeDoc = activeTradeDoc();
+  if (!tradeDoc) return toast("請先建立國貿單據");
+  if (!window.jspdf?.jsPDF) return toast("PDF 工具載入中，請稍後再試");
+  if (!window.html2canvas) return toast("PDF 畫面工具載入中，請稍後再試");
+  const mode = intlTab === "packing" ? "packing" : "invoice";
+  const title = mode === "packing" ? "PACKING" : "INVOICE";
+  const capture = document.createElement("div");
+  capture.className = "trade-pdf-capture";
+  capture.innerHTML = renderTradeSheet(tradeDoc, mode);
+  document.body.appendChild(capture);
+  try {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const target = capture.querySelector(".trade-document");
+    const canvas = await window.html2canvas(target, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      windowWidth: target.scrollWidth,
+      windowHeight: target.scrollHeight,
+    });
+    const pdf = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const pageWidth = 297;
+    const pageHeight = 210;
+    const margin = 5;
+    const imageWidth = pageWidth - margin * 2;
+    const imagePageHeight = pageHeight - margin * 2;
+    const sliceHeight = Math.floor(canvas.width * (imagePageHeight / imageWidth));
+    let sourceY = 0;
+    let pageIndex = 0;
+    while (sourceY < canvas.height) {
+      const currentSliceHeight = Math.min(sliceHeight, canvas.height - sourceY);
+      const pageCanvas = document.createElement("canvas");
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = currentSliceHeight;
+      pageCanvas.getContext("2d").drawImage(canvas, 0, sourceY, canvas.width, currentSliceHeight, 0, 0, canvas.width, currentSliceHeight);
+      if (pageIndex > 0) pdf.addPage();
+      const imageHeight = currentSliceHeight * imageWidth / canvas.width;
+      pdf.addImage(pageCanvas.toDataURL("image/jpeg", 0.96), "JPEG", margin, margin, imageWidth, imageHeight);
+      sourceY += currentSliceHeight;
+      pageIndex += 1;
+    }
+    pdf.save(`${normalizeTradeNo(tradeDoc.no)}_${title}.pdf`);
+  } finally {
+    capture.remove();
+  }
+}
+
 function renderAll() {
   applyAppearanceSettings();
   syncSelects();
@@ -3585,7 +3634,7 @@ function bindEvents() {
   });
   $("#printTradeBtn").addEventListener("click", () => window.print());
   $("#downloadTradeWordBtn").addEventListener("click", downloadTradeWord);
-  $("#downloadTradePdfBtn").addEventListener("click", downloadTradePdf);
+  $("#downloadTradePdfBtn").addEventListener("click", downloadTradePdfFromCanvas);
   $("#knitterForm").addEventListener("submit", (event) => {
     event.preventDefault();
     addKnitter(event.currentTarget);

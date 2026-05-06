@@ -1513,6 +1513,22 @@ input[type="file"] {
   background: #fff3cc;
 }
 
+.trade-pdf-capture {
+  position: fixed;
+  top: 0;
+  left: -12000px;
+  width: 1120px;
+  background: #fff;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.trade-pdf-capture .trade-document {
+  width: 1120px;
+  min-width: 0;
+  box-shadow: none;
+}
+
 .trade-doc-table tfoot td {
   font-size: 18px;
   font-weight: 900;
