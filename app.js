@@ -1783,7 +1783,16 @@ function renderTradeSheet(doc, mode = intlTab) {
         <pre>${tradeCell(shippingMark)}</pre>
       </div>
     </div>
-    <table class="trade-doc-table">
+    <table class="trade-doc-table ${isPacking ? "packing-table" : "invoice-table"}">
+      <colgroup>
+        <col class="col-no" />
+        <col class="col-yarn" />
+        <col class="col-count" />
+        <col class="col-composition" />
+        <col class="col-color" />
+        <col class="col-nw" />
+        ${isPacking ? `<col class="col-gw" /><col class="col-packages" />` : `<col class="col-unit-price" /><col class="col-amount" />`}
+      </colgroup>
       <thead><tr><th>No.</th><th>Yarn No.</th><th>Count</th><th>Composition</th><th>Color</th><th>N.W(KG)</th>${isPacking ? "<th>G.W(KG)</th><th>Packages</th>" : "<th>Unit Price</th><th>Amount</th>"}</tr></thead>
       <tbody>${lines.map((line, index) => {
         const amount = Number(line.nw || 0) * Number(line.unitPrice || 0);
@@ -1846,6 +1855,13 @@ function tradeWordStyles() {
     .trade-box b { display: inline-block; width: 34%; padding: 4px; box-sizing: border-box; background: #f4f4f4; }
     .trade-box span { display: inline-block; width: 64%; padding: 4px; box-sizing: border-box; background: #fff; word-break: break-word; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .col-no { width: 4%; }
+    .col-yarn { width: 13%; }
+    .col-count { width: 9%; }
+    .col-composition { width: 29%; }
+    .col-color { width: 9%; }
+    .col-nw, .col-gw, .col-unit-price { width: 10%; }
+    .col-packages, .col-amount { width: 16%; }
     th, td { border: 1px solid #000; padding: 4px; text-align: center; font-size: 8.5pt; word-break: break-word; }
     th { background: #1f527c; color: #fff; }
     tbody tr:nth-child(even) td { background: #f8fbfb; }

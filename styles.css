@@ -1489,6 +1489,37 @@ input[type="file"] {
   table-layout: fixed;
 }
 
+.trade-doc-table .col-no {
+  width: 4%;
+}
+
+.trade-doc-table .col-yarn {
+  width: 13%;
+}
+
+.trade-doc-table .col-count {
+  width: 9%;
+}
+
+.trade-doc-table .col-composition {
+  width: 29%;
+}
+
+.trade-doc-table .col-color {
+  width: 9%;
+}
+
+.trade-doc-table .col-nw,
+.trade-doc-table .col-gw,
+.trade-doc-table .col-unit-price {
+  width: 10%;
+}
+
+.trade-doc-table .col-packages,
+.trade-doc-table .col-amount {
+  width: 16%;
+}
+
 .trade-doc-table th {
   background: #1f527c;
   color: #fff;
@@ -1505,8 +1536,14 @@ input[type="file"] {
   border: 1px solid #000;
   padding: 5px 8px;
   text-align: center;
+  white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
+  line-height: 1.25;
+}
+
+.trade-doc-table td:nth-child(4) {
+  font-size: 15px;
 }
 
 .trade-document.packing .trade-doc-table tbody td {
