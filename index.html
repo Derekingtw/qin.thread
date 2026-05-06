@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260506-01" />
+    <link rel="stylesheet" href="styles.css?v=20260506-02" />
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
@@ -1006,7 +1006,7 @@
           <form class="editor intl-editor" id="tradeForm">
             <h2>INVOICE & PACKING</h2>
             <input type="hidden" name="id" />
-            <label class="auto-label">流水編號<span>自動生成</span><input readonly name="no" id="tradeNo" placeholder="自動生成" /></label>
+            <label>流水編號<input readonly name="no" id="tradeNo" /></label>
             <label>DATE<input required name="date" type="date" /></label>
             <label>Company<input required name="company" placeholder="Yeonil Textile" /></label>
             <label>Consignee<input name="consignee" placeholder="Ju, Kangbock" /></label>
@@ -1025,21 +1025,23 @@
                 <input name="deposit" type="number" min="0" step="0.01" value="0" />
               </span>
             </label>
-            <label class="auto-label">Total Value<span>自動生成</span>
+            <label>Total Value
               <span class="currency-field">
                 <select name="totalValueCurrency">
                   <option value="TWD">TWD</option>
                   <option value="RMB">RMB</option>
                   <option value="USD" selected>USD</option>
                 </select>
-                <input readonly name="totalValue" id="tradeTotalValue" placeholder="自動生成" />
+                <input readonly name="totalValue" id="tradeTotalValue" />
               </span>
             </label>
             <label class="shipping-mark-field">Shipping Mark
               <span class="shipping-mark-fixed">
                 <b>HT</b>
                 <b>(IN TRL)</b>
-                <span>B/NO:<input name="shippingBno" placeholder="1~31" /></span>
+                <span class="mark-line">B/NO:<input name="shippingBno" placeholder="1~31" /></span>
+                <span class="mark-line">B/NO:<input name="shippingBno" placeholder="可留空" /></span>
+                <span class="mark-line">B/NO:<input name="shippingBno" placeholder="可留空" /></span>
               </span>
             </label>
             <div class="trade-lines">
@@ -1154,6 +1156,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260506-01"></script>
+    <script src="app.js?v=20260506-02"></script>
   </body>
 </html>

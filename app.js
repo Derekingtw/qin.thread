@@ -270,8 +270,9 @@ function normalizeState(saved) {
   next.tradeDocs = (next.tradeDocs || []).map((doc) => ({
     ...doc,
     no: normalizeTradeNo(doc.no),
-    shippingBno: doc.shippingBno || shippingBnoFromMark(doc.shippingMark || ""),
-    shippingMark: doc.shippingMark || buildShippingMark(doc.shippingBno || ""),
+    shippingBnos: normalizeShippingBnos(doc.shippingBnos || doc.shippingBno || shippingBnoFromMark(doc.shippingMark || "")),
+    shippingBno: normalizeShippingBnos(doc.shippingBnos || doc.shippingBno || shippingBnoFromMark(doc.shippingMark || ""))[0] || "",
+    shippingMark: buildShippingMark(doc.shippingBnos || doc.shippingBno || shippingBnoFromMark(doc.shippingMark || "")),
     depositCurrency: doc.depositCurrency || doc.currency || "USD",
     totalValueCurrency: doc.totalValueCurrency || doc.depositCurrency || doc.currency || "USD",
     lines: (doc.lines || []).map((line) => ({
@@ -1559,18 +1560,25 @@ function normalizeTradeNo(no = "") {
 
 function shippingBnoFromMark(mark = "") {
   const text = String(mark || "").trim();
-  const match = text.match(/B\/NO\s*[:：]?\s*([^\n\r]*)/i);
-  if (match) return match[1].trim();
-  return text
+  const matches = [...text.matchAll(/B\/NO\s*[:\uFF1A]?\s*([^\n\r]*)/gi)].map((match) => match[1].trim()).filter(Boolean);
+  if (matches.length) return matches;
+  const fallback = text
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line && !/^HT$/i.test(line) && !/^\(IN\s+TRL\)$/i.test(line))
     .join(" ")
     .trim();
+  return fallback ? [fallback] : [];
 }
 
-function buildShippingMark(bno = "") {
-  return `HT\n(IN TRL)\nB/NO:${String(bno || "").trim()}`;
+function normalizeShippingBnos(values = []) {
+  const list = Array.isArray(values) ? values : [values];
+  return list.map((value) => String(value || "").trim()).filter(Boolean).slice(0, 3);
+}
+
+function buildShippingMark(bnos = []) {
+  const lines = normalizeShippingBnos(bnos).map((bno) => `B/NO:${bno}`);
+  return ["HT", "(IN TRL)", ...lines].join("\n");
 }
 
 function generateTradeNo(existingId = "") {
@@ -1629,7 +1637,7 @@ function renderTradeLineInputs(lines = [], minRows = 5) {
     <input class="shared-field" name="color" value="${escapeHtml(line.color || "")}" placeholder="共用 #105" />
     <input class="shared-field" name="nw" type="number" min="0" step="0.01" value="${line.nw || ""}" placeholder="共用" />
     <input class="invoice-field" name="unitPrice" type="number" min="0" step="0.01" value="${line.unitPrice || ""}" placeholder="INVOICE" />
-    <input class="auto-field invoice-field" readonly value="${Number(line.nw || 0) && Number(line.unitPrice || 0) ? (Number(line.nw || 0) * Number(line.unitPrice || 0)).toFixed(2) : "自動生成"}" />
+    <input class="auto-field invoice-field" readonly value="${Number(line.nw || 0) && Number(line.unitPrice || 0) ? (Number(line.nw || 0) * Number(line.unitPrice || 0)).toFixed(2) : ""}" />
     <input class="packing-field" name="gw" type="number" min="0" step="0.01" value="${line.gw || ""}" placeholder="PACKING" />
     <input class="packing-field" name="packages" type="number" min="0" step="1" value="${line.packages || ""}" placeholder="PACKING" />
     <button class="small-btn delete" data-remove-trade-line="${index}" type="button" aria-label="刪除此列"><i data-lucide="trash-2"></i></button>
@@ -1734,7 +1742,7 @@ function renderTradeSheet(doc, mode = intlTab) {
   const totals = tradeTotals(doc.lines || []);
   const isPacking = mode === "packing";
   const title = isPacking ? "COMMERCIAL PACKING" : "COMMERCIAL INVOICE";
-  const shippingMark = buildShippingMark(doc.shippingBno || shippingBnoFromMark(doc.shippingMark || ""));
+  const shippingMark = buildShippingMark(doc.shippingBnos || doc.shippingBno || shippingBnoFromMark(doc.shippingMark || ""));
   const depositCurrency = doc.depositCurrency || "USD";
   const totalValueCurrency = doc.totalValueCurrency || depositCurrency;
   $("#tradePreviewTitle").textContent = title;
@@ -1907,7 +1915,7 @@ function drawTradePdfHeader(pdf, tradeDoc, mode) {
   pdf.setTextColor(0, 0, 0);
   pdf.setFont("courier", "bold");
   pdf.setFontSize(11);
-  pdf.text(pdf.splitTextToSize(buildShippingMark(tradeDoc.shippingBno || shippingBnoFromMark(tradeDoc.shippingMark || "")), 76), 242.5, 54, { align: "center" });
+  pdf.text(pdf.splitTextToSize(buildShippingMark(tradeDoc.shippingBnos || tradeDoc.shippingBno || shippingBnoFromMark(tradeDoc.shippingMark || "")), 76), 242.5, 54, { align: "center" });
 }
 
 function drawTradePdfTable(pdf, tradeDoc, mode) {
@@ -2118,7 +2126,10 @@ function fillForm(form, data) {
     renderImagePreview("sampleImagePreview", form.elements.imageData?.value || "");
   }
   if (form.id === "tradeForm") {
-    form.elements.shippingBno.value = data.shippingBno || shippingBnoFromMark(data.shippingMark || "");
+    const shippingBnos = normalizeShippingBnos(data.shippingBnos || data.shippingBno || shippingBnoFromMark(data.shippingMark || ""));
+    form.querySelectorAll("[name='shippingBno']").forEach((input, index) => {
+      input.value = shippingBnos[index] || "";
+    });
     form.elements.depositCurrency.value = data.depositCurrency || data.currency || "USD";
     form.elements.totalValueCurrency.value = data.totalValueCurrency || data.depositCurrency || data.currency || "USD";
     updateTradeAutoFields();
@@ -2196,7 +2207,9 @@ function resetForm(form) {
     form.elements.from.value = "TAIWAN";
     form.elements.product.value = "YARN";
     form.elements.transaction.value = "T/T";
-    form.elements.shippingBno.value = "1~31";
+    form.querySelectorAll("[name='shippingBno']").forEach((input, index) => {
+      input.value = index === 0 ? "1~31" : "";
+    });
     form.elements.depositCurrency.value = "USD";
     form.elements.totalValueCurrency.value = "USD";
     renderTradeLineInputs([], 5);
@@ -2916,11 +2929,13 @@ function addLiveSale(form) {
 }
 
 function addTradeDoc(form) {
-  const data = Object.fromEntries(new FormData(form));
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData);
   const lines = tradeLinesFromForm(form);
   if (!lines.length) return toast("請至少填寫一筆商品明細");
   const totals = tradeTotals(lines);
-  const shippingBno = data.shippingBno?.trim() || shippingBnoFromMark(data.shippingMark || "");
+  const shippingBnos = normalizeShippingBnos(formData.getAll("shippingBno"));
+  const shippingBno = shippingBnos[0] || "";
   const depositCurrency = data.depositCurrency || "USD";
   const totalValueCurrency = data.totalValueCurrency || depositCurrency;
   const doc = {
@@ -2934,8 +2949,9 @@ function addTradeDoc(form) {
     from: data.from.trim(),
     product: data.product.trim(),
     transaction: data.transaction.trim(),
+    shippingBnos,
     shippingBno,
-    shippingMark: buildShippingMark(shippingBno),
+    shippingMark: buildShippingMark(shippingBnos),
     depositCurrency,
     totalValueCurrency,
     deposit: Number(data.deposit || 0),
