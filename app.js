@@ -270,6 +270,8 @@ function normalizeState(saved) {
   next.tradeDocs = (next.tradeDocs || []).map((doc) => ({
     ...doc,
     no: normalizeTradeNo(doc.no),
+    portOfLoading: doc.portOfLoading || "",
+    portOfDischarge: doc.portOfDischarge || "",
     shippingBnos: normalizeShippingBnos(doc.shippingBnos || doc.shippingBno || shippingBnoFromMark(doc.shippingMark || "")),
     shippingBno: normalizeShippingBnos(doc.shippingBnos || doc.shippingBno || shippingBnoFromMark(doc.shippingMark || ""))[0] || "",
     shippingMark: buildShippingMark(doc.shippingBnos || doc.shippingBno || shippingBnoFromMark(doc.shippingMark || "")),
@@ -1761,6 +1763,8 @@ function renderTradeSheet(doc, mode = intlTab) {
         <h3>Traffic information</h3>
         <p><b>DATE:</b><span>${tradeCell(doc.date?.replaceAll("-", "/"))}</span></p>
         <p><b>FROM:</b><span>${tradeCell(doc.from)}</span></p>
+        <p><b>POL:</b><span>${tradeCell(doc.portOfLoading)}</span></p>
+        <p><b>POD:</b><span>${tradeCell(doc.portOfDischarge)}</span></p>
         <p><b>PRODUCT:</b><span>${tradeCell(doc.product)}</span></p>
         <p><b>TRANSACTION:</b><span>${tradeCell(doc.transaction)}</span></p>
       </div>
@@ -1788,8 +1792,8 @@ function renderIntl() {
   $("#tradeDocCount").textContent = `${docs.length} 筆`;
   $("#tradeDocRows").innerHTML = docs.map((doc) => {
     const totals = tradeTotals(doc.lines || []);
-    return `<tr class="${doc.id === activeTradeDocId ? "selected-row" : ""}" data-trade-select="${doc.id}"><td>${normalizeTradeNo(doc.no)}</td><td>${doc.date || "-"}</td><td>${doc.company || "-"}</td><td>${doc.from || "-"}</td><td>${doc.product || "-"}</td><td class="num">${number(totals.nw)}</td><td class="num">${number(totals.amount)}</td><td><div class="row-actions trade-row-actions"><button class="text-small-btn" data-select-trade-doc="${doc.id}" type="button">瀏覽</button><button class="text-small-btn" data-edit="tradeDoc" data-id="${doc.id}" type="button">編輯</button><button class="text-small-btn delete" data-delete="tradeDoc" data-id="${doc.id}" type="button">刪除</button></div></td></tr>`;
-  }).join("") || emptyRow(8);
+    return `<tr class="${doc.id === activeTradeDocId ? "selected-row" : ""}" data-trade-select="${doc.id}"><td>${normalizeTradeNo(doc.no)}</td><td>${doc.date || "-"}</td><td>${doc.company || "-"}</td><td>${doc.from || "-"}</td><td>${doc.portOfLoading || "-"}</td><td>${doc.portOfDischarge || "-"}</td><td>${doc.product || "-"}</td><td class="num">${number(totals.nw)}</td><td class="num">${number(totals.amount)}</td><td><div class="row-actions trade-row-actions"><button class="text-small-btn" data-select-trade-doc="${doc.id}" type="button">瀏覽</button><button class="text-small-btn" data-edit="tradeDoc" data-id="${doc.id}" type="button">編輯</button><button class="text-small-btn delete" data-delete="tradeDoc" data-id="${doc.id}" type="button">刪除</button></div></td></tr>`;
+  }).join("") || emptyRow(10);
   const select = $("#tradeDocSelect");
   if (select) {
     select.innerHTML = docs.map((doc) => `<option value="${doc.id}" ${doc.id === activeTradeDocId ? "selected" : ""}>${normalizeTradeNo(doc.no)}｜${doc.date || "-"}｜${escapeHtml(doc.company || "-")}</option>`).join("") || `<option value="">尚無單據</option>`;
@@ -1899,19 +1903,21 @@ function drawTradePdfHeader(pdf, tradeDoc, mode) {
   pdf.setTextColor(31, 82, 124);
   pdf.setFontSize(11);
   pdf.text(`NO: ${normalizeTradeNo(tradeDoc.no)}`, 285, 32, { align: "right" });
-  drawPdfBox(pdf, 10, 36, 86, 48, isPacking ? "BUYER (Linked from Invoice)" : "BUYER INFORMATION", [
+  drawPdfBox(pdf, 10, 36, 86, 58, isPacking ? "BUYER (Linked from Invoice)" : "BUYER INFORMATION", [
     ["Company:", tradeDoc.company],
     ["Consignee:", tradeDoc.consignee],
     ["Phone:", tradeDoc.phone],
     ["Address:", tradeDoc.address],
   ]);
-  drawPdfBox(pdf, 106, 36, 82, 48, "Traffic information", [
+  drawPdfBox(pdf, 106, 36, 82, 58, "Traffic information", [
     ["DATE:", String(tradeDoc.date || "").replaceAll("-", "/")],
     ["FROM:", tradeDoc.from],
+    ["POL:", tradeDoc.portOfLoading],
+    ["POD:", tradeDoc.portOfDischarge],
     ["PRODUCT:", tradeDoc.product],
     ["TRANS:", tradeDoc.transaction],
   ]);
-  drawPdfBox(pdf, 198, 36, 89, 48, "Shipping Mark:", []);
+  drawPdfBox(pdf, 198, 36, 89, 58, "Shipping Mark:", []);
   pdf.setTextColor(0, 0, 0);
   pdf.setFont("courier", "bold");
   pdf.setFontSize(11);
@@ -1929,7 +1935,7 @@ function drawTradePdfTable(pdf, tradeDoc, mode) {
     : [
       ["No.", 12], ["Yarn No.", 42], ["Count", 24], ["Composition", 70], ["Color", 28], ["N.W(KG)", 28], ["Unit Price", 30], ["Amount", 33],
     ];
-  let y = 92;
+  let y = 102;
   const x0 = 10;
   const rowH = 8;
   const header = () => {
@@ -2205,6 +2211,8 @@ function resetForm(form) {
     form.elements.no.value = generateTradeNo();
     form.elements.date.value = today();
     form.elements.from.value = "TAIWAN";
+    form.elements.portOfLoading.value = "";
+    form.elements.portOfDischarge.value = "";
     form.elements.product.value = "YARN";
     form.elements.transaction.value = "T/T";
     form.querySelectorAll("[name='shippingBno']").forEach((input, index) => {
@@ -2947,6 +2955,8 @@ function addTradeDoc(form) {
     phone: data.phone.trim(),
     address: data.address.trim(),
     from: data.from.trim(),
+    portOfLoading: data.portOfLoading.trim(),
+    portOfDischarge: data.portOfDischarge.trim(),
     product: data.product.trim(),
     transaction: data.transaction.trim(),
     shippingBnos,
@@ -3252,7 +3262,7 @@ function reportContent(view) {
       ...(state.livePayrolls || []).map((p) => ["直播薪資", staffName(p.staffId), p.gender || staffGender(p.staffId), money(p.baseSalary), `${number(p.commission)}%`, money(p.netSalary)]),
       ...(state.partnerBonuses || []).map((p) => ["合夥人紅利", staffName(p.staffId), p.gender || staffGender(p.staffId), money(p.netProfit), `${number(p.bonusRate)}%`, money(p.bonusAmount)]),
     ]),
-    intl: () => reportTable(["流水編號", "DATE", "Company", "FROM", "PRODUCT", "N.W(KG)", "Amount"], (state.tradeDocs || []).map((doc) => { const totals = tradeTotals(doc.lines || []); return [doc.no, doc.date, doc.company, doc.from, doc.product, number(totals.nw), number(totals.amount)]; })),
+    intl: () => reportTable(["流水編號", "DATE", "Company", "FROM", "POL", "POD", "PRODUCT", "N.W(KG)", "Amount"], (state.tradeDocs || []).map((doc) => { const totals = tradeTotals(doc.lines || []); return [doc.no, doc.date, doc.company, doc.from, doc.portOfLoading, doc.portOfDischarge, doc.product, number(totals.nw), number(totals.amount)]; })),
     growth: () => reportTable(["日期", "人員", "類別", "經驗值", "說明"], (state.growthRecords || []).map((p) => [p.date, staffName(p.staffId), p.category, `${Number(p.xp) > 0 ? "+" : ""}${number(p.xp)} EXP`, p.note])),
     settings: () => reportTable(["職位名稱"], (state.settings?.positions || []).map((name) => [name])),
   };

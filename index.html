@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260506-02" />
+    <link rel="stylesheet" href="styles.css?v=20260506-03" />
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
@@ -1013,6 +1013,8 @@
             <label>Phone<input name="phone" placeholder="82-2-2263-7117" /></label>
             <label>Address<input name="address" /></label>
             <label>FROM<input name="from" value="TAIWAN" /></label>
+            <label>Port of Loading (POL)<input name="portOfLoading" placeholder="TAICHUNG, TAIWAN" /></label>
+            <label>Port of Discharge (POD)<input name="portOfDischarge" placeholder="BUSAN, KOREA" /></label>
             <label>PRODUCT<input name="product" value="YARN" /></label>
             <label>TRANSACTION<input name="transaction" value="T/T" /></label>
             <label>Deposit
@@ -1062,7 +1064,7 @@
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2>國貿單據</h2><span id="tradeDocCount" class="pill">0 筆</span></div>
-            <div class="table-wrap"><table><thead><tr><th>流水編號</th><th>DATE</th><th>Company</th><th>FROM</th><th>PRODUCT</th><th>Total N.W</th><th>Amount</th><th></th></tr></thead><tbody id="tradeDocRows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>流水編號</th><th>DATE</th><th>Company</th><th>FROM</th><th>POL</th><th>POD</th><th>PRODUCT</th><th>Total N.W</th><th>Amount</th><th></th></tr></thead><tbody id="tradeDocRows"></tbody></table></div>
           </section>
         </div>
         <section class="panel wide trade-preview-panel intl-panel" data-intl-preview>
@@ -1156,6 +1158,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260506-02"></script>
+    <script src="app.js?v=20260506-03"></script>
   </body>
 </html>
