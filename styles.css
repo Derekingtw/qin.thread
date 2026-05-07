@@ -913,10 +913,6 @@ input[type="file"] {
   align-self: stretch;
 }
 
-.invoice-remark-field {
-  grid-column: 1 / 3;
-}
-
 #intl .intl-editor .shipping-mark-field textarea {
   height: 100%;
 }
@@ -1115,7 +1111,7 @@ input[type="file"] {
 
 .trade-line-head,
 .trade-line-row {
-  grid-template-columns: 42px 1.1fr .72fr 1.35fr .72fr .72fr .78fr .82fr .72fr .72fr 42px;
+  grid-template-columns: 42px 1.1fr .72fr 1.35fr .72fr .72fr .78fr .82fr .82fr .72fr .72fr 42px;
 }
 
 .yarn-line-head,
@@ -1524,6 +1520,15 @@ input[type="file"] {
   width: 16%;
 }
 
+.trade-doc-table.invoice-table .col-composition {
+  width: 24%;
+}
+
+.trade-doc-table.invoice-table .col-amount,
+.trade-doc-table.invoice-table .col-remark {
+  width: 12%;
+}
+
 .trade-doc-table th {
   background: #1f527c;
   color: #fff;
@@ -1598,26 +1603,6 @@ input[type="file"] {
   padding: 14px;
   display: flex;
   justify-content: space-between;
-}
-
-.trade-remark-box {
-  margin-top: 16px;
-  border: 2px solid #1f527c;
-}
-
-.trade-remark-box h3 {
-  margin: 0;
-  padding: 8px 12px;
-  color: #1f527c;
-  background: #f1eadb;
-}
-
-.trade-remark-box p {
-  min-height: 38px;
-  margin: 0;
-  padding: 12px;
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
 .contract-preview {

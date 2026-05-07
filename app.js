@@ -282,13 +282,13 @@ function normalizeState(saved) {
     shippingMark: buildShippingMark(doc.shippingBnos || doc.shippingBno || shippingBnoFromMark(doc.shippingMark || "")),
     depositCurrency: doc.depositCurrency || doc.currency || "USD",
     totalValueCurrency: doc.totalValueCurrency || doc.depositCurrency || doc.currency || "USD",
-    invoiceRemark: doc.invoiceRemark || doc.remark || "",
     lines: (doc.lines || []).map((line) => ({
       ...line,
       nw: Number(line.nw || 0),
       gw: Number(line.gw || 0),
       unitPrice: Number(line.unitPrice || 0),
       packages: String(line.packages || "").trim(),
+      remark: line.remark || "",
     })),
   }));
   next.growthRecords = (next.growthRecords || []).map((record) => ({
@@ -1610,7 +1610,7 @@ function tradeTotals(lines = []) {
 
 function tradeLinesFromForm(form) {
   const formData = new FormData(form);
-  return tradeLineValuesFromForm(formData).filter((line) => line.yarnNo || line.count || line.composition || line.color || line.nw || line.gw || line.unitPrice || line.packages);
+  return tradeLineValuesFromForm(formData).filter((line) => line.yarnNo || line.count || line.composition || line.color || line.nw || line.gw || line.unitPrice || line.packages || line.remark);
 }
 
 function tradeLineValuesFromForm(formData = new FormData($("#tradeForm"))) {
@@ -1623,6 +1623,7 @@ function tradeLineValuesFromForm(formData = new FormData($("#tradeForm"))) {
     gw: Number(formData.getAll("gw")[index] || 0),
     unitPrice: Number(formData.getAll("unitPrice")[index] || 0),
     packages: formData.getAll("packages")[index]?.trim() || "",
+    remark: formData.getAll("lineRemark")[index]?.trim() || "",
   }));
 }
 
@@ -1646,6 +1647,7 @@ function renderTradeLineInputs(lines = [], minRows = 5) {
     <input class="shared-field" name="nw" type="number" min="0" step="0.01" value="${line.nw || ""}" placeholder="共用" />
     <input class="invoice-field" name="unitPrice" type="number" min="0" step="0.01" value="${line.unitPrice || ""}" placeholder="INVOICE" />
     <input class="auto-field invoice-field" readonly value="${Number(line.nw || 0) && Number(line.unitPrice || 0) ? (Number(line.nw || 0) * Number(line.unitPrice || 0)).toFixed(2) : ""}" />
+    <input class="invoice-field" name="lineRemark" value="${escapeHtml(line.remark || "")}" placeholder="Remark" />
     <input class="packing-field" name="gw" type="number" min="0" step="0.01" value="${line.gw || ""}" placeholder="PACKING" />
     <input class="packing-field" name="packages" type="text" value="${escapeHtml(line.packages || "")}" placeholder="PACKING" />
     <button class="small-btn delete" data-remove-trade-line="${index}" type="button" aria-label="刪除此列"><i data-lucide="trash-2"></i></button>
@@ -1792,16 +1794,16 @@ function renderTradeSheet(doc, mode = intlTab) {
         <col class="col-composition" />
         <col class="col-color" />
         <col class="col-nw" />
-        ${isPacking ? `<col class="col-gw" /><col class="col-packages" />` : `<col class="col-unit-price" /><col class="col-amount" />`}
+        ${isPacking ? `<col class="col-gw" /><col class="col-packages" />` : `<col class="col-unit-price" /><col class="col-amount" /><col class="col-remark" />`}
       </colgroup>
-      <thead><tr><th>No.</th><th>Yarn No.</th><th>Count</th><th>Composition</th><th>Color</th><th>N.W(KG)</th>${isPacking ? "<th>G.W(KG)</th><th>Packages</th>" : "<th>Unit Price</th><th>Amount</th>"}</tr></thead>
+      <thead><tr><th>No.</th><th>Yarn No.</th><th>Count</th><th>Composition</th><th>Color</th><th>N.W(KG)</th>${isPacking ? "<th>G.W(KG)</th><th>Packages</th>" : "<th>Unit Price</th><th>Amount</th><th>Remark</th>"}</tr></thead>
       <tbody>${lines.map((line, index) => {
         const amount = Number(line.nw || 0) * Number(line.unitPrice || 0);
-        return `<tr><td>${index + 1}</td><td>${tradeCell(line.yarnNo)}</td><td>${tradeCell(line.count)}</td><td>${tradeCell(line.composition)}</td><td>${tradeCell(line.color)}</td><td>${number(line.nw || 0)}</td>${isPacking ? `<td>${number(line.gw || 0)}</td><td>${tradeCell(line.packages)}</td>` : `<td>${line.unitPrice ? number(line.unitPrice) : ""}</td><td>${amount ? number(amount) : "0"}</td>`}</tr>`;
+        return `<tr><td>${index + 1}</td><td>${tradeCell(line.yarnNo)}</td><td>${tradeCell(line.count)}</td><td>${tradeCell(line.composition)}</td><td>${tradeCell(line.color)}</td><td>${number(line.nw || 0)}</td>${isPacking ? `<td>${number(line.gw || 0)}</td><td>${tradeCell(line.packages)}</td>` : `<td>${line.unitPrice ? number(line.unitPrice) : ""}</td><td>${amount ? number(amount) : "0"}</td><td>${tradeCell(line.remark)}</td>`}</tr>`;
       }).join("")}</tbody>
-      <tfoot><tr><td colspan="5">TOTAL:</td><td>${number(totals.nw)}</td>${isPacking ? `<td>${number(totals.gw)}</td><td></td>` : `<td></td><td>${number(totals.amount)}</td>`}</tr></tfoot>
+      <tfoot><tr><td colspan="5">TOTAL:</td><td>${number(totals.nw)}</td>${isPacking ? `<td>${number(totals.gw)}</td><td></td>` : `<td></td><td>${number(totals.amount)}</td><td></td>`}</tr></tfoot>
     </table>
-    ${isPacking ? "" : `<div class="trade-summary-boxes"><div><h3>Deposit</h3><p>${tradeCell(depositCurrency)} <b>${number(doc.deposit || 0)}</b></p></div><div><h3>Total Value</h3><p>${tradeCell(totalValueCurrency)} <b>${number(doc.totalValue || Math.max(0, totals.amount - Number(doc.deposit || 0)))}</b></p></div></div>${doc.invoiceRemark ? `<div class="trade-remark-box"><h3>Remark</h3><p>${tradeCell(doc.invoiceRemark)}</p></div>` : ""}`}
+    ${isPacking ? "" : `<div class="trade-summary-boxes"><div><h3>Deposit</h3><p>${tradeCell(depositCurrency)} <b>${number(doc.deposit || 0)}</b></p></div><div><h3>Total Value</h3><p>${tradeCell(totalValueCurrency)} <b>${number(doc.totalValue || Math.max(0, totals.amount - Number(doc.deposit || 0)))}</b></p></div></div>`}
   </div>`;
 }
 
@@ -1862,7 +1864,10 @@ function tradeWordStyles() {
     .col-composition { width: 29%; }
     .col-color { width: 9%; }
     .col-nw, .col-gw, .col-unit-price { width: 10%; }
-    .col-packages, .col-amount { width: 16%; }
+    .invoice-table .col-composition { width: 24%; }
+    .invoice-table .col-amount { width: 12%; }
+    .invoice-table .col-remark { width: 12%; }
+    .col-packages { width: 16%; }
     th, td { border: 1px solid #000; padding: 4px; text-align: center; font-size: 8.5pt; word-break: break-word; }
     th { background: #1f527c; color: #fff; }
     tbody tr:nth-child(even) td { background: #f8fbfb; }
@@ -1871,9 +1876,6 @@ function tradeWordStyles() {
     .auto-note { display: none; }
     .trade-summary-boxes { display: table; margin-top: 14px; }
     .trade-summary-boxes div { display: table-cell; min-width: 180px; padding: 8px 20px 8px 0; }
-    .trade-remark-box { margin-top: 12px; border: 1px solid #1f527c; }
-    .trade-remark-box h3 { margin: 0; padding: 6px 8px; background: #f1eadb; color: #1f527c; font-size: 11pt; }
-    .trade-remark-box p { min-height: 28px; margin: 0; padding: 8px; white-space: pre-wrap; word-break: break-word; font-size: 9pt; }
   `;
 }
 
@@ -1972,7 +1974,7 @@ function drawTradePdfTable(pdf, tradeDoc, mode) {
       ["No.", 12], ["Yarn No.", 42], ["Count", 24], ["Composition", 70], ["Color", 28], ["N.W(KG)", 28], ["G.W(KG)", 28], ["Packages", 35],
     ]
     : [
-      ["No.", 12], ["Yarn No.", 42], ["Count", 24], ["Composition", 70], ["Color", 28], ["N.W(KG)", 28], ["Unit Price", 30], ["Amount", 33],
+      ["No.", 10], ["Yarn No.", 36], ["Count", 22], ["Composition", 58], ["Color", 24], ["N.W(KG)", 26], ["Unit Price", 28], ["Amount", 31], ["Remark", 32],
     ];
   let y = 124;
   const x0 = 10;
@@ -2014,10 +2016,10 @@ function drawTradePdfTable(pdf, tradeDoc, mode) {
     const amount = Number(line.nw || 0) * Number(line.unitPrice || 0);
     drawRow(isPacking
       ? [index + 1, line.yarnNo, line.count, line.composition, line.color, number(line.nw || 0), number(line.gw || 0), line.packages || ""]
-      : [index + 1, line.yarnNo, line.count, line.composition, line.color, number(line.nw || 0), line.unitPrice ? number(line.unitPrice) : "", amount ? number(amount) : "0"]
+      : [index + 1, line.yarnNo, line.count, line.composition, line.color, number(line.nw || 0), line.unitPrice ? number(line.unitPrice) : "", amount ? number(amount) : "0", line.remark || ""]
     );
   });
-  drawRow(isPacking ? ["", "", "", "", "TOTAL:", number(totals.nw), number(totals.gw), ""] : ["", "", "", "", "TOTAL:", number(totals.nw), "", number(totals.amount)]);
+  drawRow(isPacking ? ["", "", "", "", "TOTAL:", number(totals.nw), number(totals.gw), ""] : ["", "", "", "", "TOTAL:", number(totals.nw), "", number(totals.amount), ""]);
   if (!isPacking) {
     const depositCurrency = tradeDoc.depositCurrency || "USD";
     const totalValueCurrency = tradeDoc.totalValueCurrency || depositCurrency;
@@ -3054,7 +3056,6 @@ function addTradeDoc(form) {
     totalValueCurrency,
     deposit: Number(data.deposit || 0),
     totalValue: Math.max(0, totals.amount - Number(data.deposit || 0)),
-    invoiceRemark: data.invoiceRemark?.trim() || "",
     lines,
     createdAt: data.id ? (state.tradeDocs.find((item) => item.id === data.id)?.createdAt || Date.now()) : Date.now(),
   };
