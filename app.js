@@ -2501,7 +2501,10 @@ function updateDocProduct(formId, cardId, priceType) {
 
 function upsertProduct(form) {
   const data = Object.fromEntries(new FormData(form));
+  const existing = data.id ? state.products.find((item) => item.id === data.id) : null;
+  if (data.id && !existing) return toast("找不到原商品，請重新選擇後再修改");
   const payload = {
+    ...(existing || {}),
     id: data.id || uid("prd"),
     type: "office",
     sku: data.sku.trim(),
@@ -2512,19 +2515,24 @@ function upsertProduct(form) {
     price: Number(data.price),
     minStock: Number(data.minStock),
     imageData: data.imageData || "",
+    createdAt: existing?.createdAt || Date.now(),
+    updatedAt: Date.now(),
   };
   state.products = data.id ? state.products.map((item) => item.id === data.id ? payload : item) : [...state.products, payload];
   saveState();
   resetForm(form);
-  toast("商品已儲存");
+  toast(data.id ? "商品修改已儲存" : "商品已新增");
   renderAll();
 }
 
 function upsertSellProduct(form) {
   const data = Object.fromEntries(new FormData(form));
+  const existing = data.id ? state.products.find((item) => item.id === data.id) : null;
+  if (data.id && !existing) return toast("找不到原商品，請重新選擇後再修改");
   const productQty = Number(data.productQty || 0);
   const packSize = Math.max(1, Number(data.packSize || 1));
   const payload = {
+    ...(existing || {}),
     id: data.id || uid("sale-prd"),
     type: "sale",
     sku: data.sku.trim() || generateSaleSku(data.id),
@@ -2545,11 +2553,13 @@ function upsertSellProduct(form) {
     minStock: Number(data.minStock || 0),
     note: data.note.trim(),
     imageData: data.imageData || "",
+    createdAt: existing?.createdAt || Date.now(),
+    updatedAt: Date.now(),
   };
   state.products = data.id ? state.products.map((item) => item.id === data.id ? payload : item) : [...state.products, payload];
   saveState();
   resetForm(form);
-  toast("銷售產品已儲存");
+  toast(data.id ? "銷售產品修改已儲存" : "銷售產品已新增");
   renderAll();
 }
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260507-03" />
+    <link rel="stylesheet" href="styles.css?v=20260507-04" />
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -231,7 +231,10 @@
             </div>
             <label>安全庫存<input name="minStock" type="number" min="0" step="1" value="0" /></label>
             <label>備註<input name="note" /></label>
-            <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
+            <div class="form-actions">
+              <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
+              <button class="ghost-light-btn" data-reset-form="sellProductForm" type="button"><i data-lucide="rotate-ccw"></i><span>清除</span></button>
+            </div>
           </form>
           <form class="editor product-editor" id="productForm" data-product-panel="officeGoods">
             <h2>一般產品</h2>
@@ -245,7 +248,10 @@
               <label>售價<input required name="price" type="number" min="0" step="1" /></label>
             </div>
             <label>安全庫存<input required name="minStock" type="number" min="0" step="1" /></label>
-            <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
+            <div class="form-actions">
+              <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
+              <button class="ghost-light-btn" data-reset-form="productForm" type="button"><i data-lucide="rotate-ccw"></i><span>清除</span></button>
+            </div>
           </form>
           <section class="panel wide">
             <div class="panel-head"><h2 id="productListTitle">銷售產品清單</h2><span id="productCount" class="pill">0 筆</span></div>
@@ -1159,6 +1165,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260507-03"></script>
+    <script src="app.js?v=20260507-04"></script>
   </body>
 </html>
