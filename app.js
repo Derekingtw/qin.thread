@@ -282,6 +282,7 @@ function normalizeState(saved) {
     shippingMark: buildShippingMark(doc.shippingBnos || doc.shippingBno || shippingBnoFromMark(doc.shippingMark || "")),
     depositCurrency: doc.depositCurrency || doc.currency || "USD",
     totalValueCurrency: doc.totalValueCurrency || doc.depositCurrency || doc.currency || "USD",
+    invoiceRemark: doc.invoiceRemark || doc.remark || "",
     lines: (doc.lines || []).map((line) => ({
       ...line,
       nw: Number(line.nw || 0),
@@ -1800,7 +1801,7 @@ function renderTradeSheet(doc, mode = intlTab) {
       }).join("")}</tbody>
       <tfoot><tr><td colspan="5">TOTAL:</td><td>${number(totals.nw)}</td>${isPacking ? `<td>${number(totals.gw)}</td><td></td>` : `<td></td><td>${number(totals.amount)}</td>`}</tr></tfoot>
     </table>
-    ${isPacking ? "" : `<div class="trade-summary-boxes"><div><h3>Deposit</h3><p>${tradeCell(depositCurrency)} <b>${number(doc.deposit || 0)}</b></p></div><div><h3>Total Value</h3><p>${tradeCell(totalValueCurrency)} <b>${number(doc.totalValue || Math.max(0, totals.amount - Number(doc.deposit || 0)))}</b></p></div></div>`}
+    ${isPacking ? "" : `<div class="trade-summary-boxes"><div><h3>Deposit</h3><p>${tradeCell(depositCurrency)} <b>${number(doc.deposit || 0)}</b></p></div><div><h3>Total Value</h3><p>${tradeCell(totalValueCurrency)} <b>${number(doc.totalValue || Math.max(0, totals.amount - Number(doc.deposit || 0)))}</b></p></div></div>${doc.invoiceRemark ? `<div class="trade-remark-box"><h3>Remark</h3><p>${tradeCell(doc.invoiceRemark)}</p></div>` : ""}`}
   </div>`;
 }
 
@@ -1870,6 +1871,9 @@ function tradeWordStyles() {
     .auto-note { display: none; }
     .trade-summary-boxes { display: table; margin-top: 14px; }
     .trade-summary-boxes div { display: table-cell; min-width: 180px; padding: 8px 20px 8px 0; }
+    .trade-remark-box { margin-top: 12px; border: 1px solid #1f527c; }
+    .trade-remark-box h3 { margin: 0; padding: 6px 8px; background: #f1eadb; color: #1f527c; font-size: 11pt; }
+    .trade-remark-box p { min-height: 28px; margin: 0; padding: 8px; white-space: pre-wrap; word-break: break-word; font-size: 9pt; }
   `;
 }
 
@@ -3050,6 +3054,7 @@ function addTradeDoc(form) {
     totalValueCurrency,
     deposit: Number(data.deposit || 0),
     totalValue: Math.max(0, totals.amount - Number(data.deposit || 0)),
+    invoiceRemark: data.invoiceRemark?.trim() || "",
     lines,
     createdAt: data.id ? (state.tradeDocs.find((item) => item.id === data.id)?.createdAt || Date.now()) : Date.now(),
   };
