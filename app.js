@@ -287,7 +287,7 @@ function normalizeState(saved) {
       nw: Number(line.nw || 0),
       gw: Number(line.gw || 0),
       unitPrice: Number(line.unitPrice || 0),
-      packages: Number(line.packages || 0),
+      packages: String(line.packages || "").trim(),
     })),
   }));
   next.growthRecords = (next.growthRecords || []).map((record) => ({
@@ -1621,7 +1621,7 @@ function tradeLineValuesFromForm(formData = new FormData($("#tradeForm"))) {
     nw: Number(formData.getAll("nw")[index] || 0),
     gw: Number(formData.getAll("gw")[index] || 0),
     unitPrice: Number(formData.getAll("unitPrice")[index] || 0),
-    packages: Number(formData.getAll("packages")[index] || 0),
+    packages: formData.getAll("packages")[index]?.trim() || "",
   }));
 }
 
@@ -1646,7 +1646,7 @@ function renderTradeLineInputs(lines = [], minRows = 5) {
     <input class="invoice-field" name="unitPrice" type="number" min="0" step="0.01" value="${line.unitPrice || ""}" placeholder="INVOICE" />
     <input class="auto-field invoice-field" readonly value="${Number(line.nw || 0) && Number(line.unitPrice || 0) ? (Number(line.nw || 0) * Number(line.unitPrice || 0)).toFixed(2) : ""}" />
     <input class="packing-field" name="gw" type="number" min="0" step="0.01" value="${line.gw || ""}" placeholder="PACKING" />
-    <input class="packing-field" name="packages" type="number" min="0" step="1" value="${line.packages || ""}" placeholder="PACKING" />
+    <input class="packing-field" name="packages" type="text" value="${escapeHtml(line.packages || "")}" placeholder="PACKING" />
     <button class="small-btn delete" data-remove-trade-line="${index}" type="button" aria-label="刪除此列"><i data-lucide="trash-2"></i></button>
   </div>`).join("");
   if (window.lucide) window.lucide.createIcons();
@@ -1796,7 +1796,7 @@ function renderTradeSheet(doc, mode = intlTab) {
       <thead><tr><th>No.</th><th>Yarn No.</th><th>Count</th><th>Composition</th><th>Color</th><th>N.W(KG)</th>${isPacking ? "<th>G.W(KG)</th><th>Packages</th>" : "<th>Unit Price</th><th>Amount</th>"}</tr></thead>
       <tbody>${lines.map((line, index) => {
         const amount = Number(line.nw || 0) * Number(line.unitPrice || 0);
-        return `<tr><td>${index + 1}</td><td>${tradeCell(line.yarnNo)}</td><td>${tradeCell(line.count)}</td><td>${tradeCell(line.composition)}</td><td>${tradeCell(line.color)}</td><td>${number(line.nw || 0)}</td>${isPacking ? `<td>${number(line.gw || 0)}</td><td>${line.packages ? number(line.packages) : ""}</td>` : `<td>${line.unitPrice ? number(line.unitPrice) : ""}</td><td>${amount ? number(amount) : "0"}</td>`}</tr>`;
+        return `<tr><td>${index + 1}</td><td>${tradeCell(line.yarnNo)}</td><td>${tradeCell(line.count)}</td><td>${tradeCell(line.composition)}</td><td>${tradeCell(line.color)}</td><td>${number(line.nw || 0)}</td>${isPacking ? `<td>${number(line.gw || 0)}</td><td>${tradeCell(line.packages)}</td>` : `<td>${line.unitPrice ? number(line.unitPrice) : ""}</td><td>${amount ? number(amount) : "0"}</td>`}</tr>`;
       }).join("")}</tbody>
       <tfoot><tr><td colspan="5">TOTAL:</td><td>${number(totals.nw)}</td>${isPacking ? `<td>${number(totals.gw)}</td><td></td>` : `<td></td><td>${number(totals.amount)}</td>`}</tr></tfoot>
     </table>
@@ -2009,7 +2009,7 @@ function drawTradePdfTable(pdf, tradeDoc, mode) {
   lines.forEach((line, index) => {
     const amount = Number(line.nw || 0) * Number(line.unitPrice || 0);
     drawRow(isPacking
-      ? [index + 1, line.yarnNo, line.count, line.composition, line.color, number(line.nw || 0), number(line.gw || 0), line.packages ? number(line.packages) : ""]
+      ? [index + 1, line.yarnNo, line.count, line.composition, line.color, number(line.nw || 0), number(line.gw || 0), line.packages || ""]
       : [index + 1, line.yarnNo, line.count, line.composition, line.color, number(line.nw || 0), line.unitPrice ? number(line.unitPrice) : "", amount ? number(amount) : "0"]
     );
   });
