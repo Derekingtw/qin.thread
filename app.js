@@ -1,8 +1,8 @@
 const STORAGE_KEY = "oa_inventory_state_v1";
 const SESSION_KEY = "oa_inventory_session_v1";
-const ALL_VIEWS = ["dashboard", "products", "partners", "inventory", "purchases", "sales", "shipping", "invoices", "tracking", "production", "contracts", "liveSales", "live", "knitters", "staff", "leave", "approvals", "payroll", "intl", "growth", "settings"];
-const ERP_VIEWS = ["products", "partners", "inventory", "purchases", "sales", "shipping", "invoices", "tracking", "production", "contracts"];
-const ERP_TAB_LABELS = { products: "商品", partners: "往來單位", inventory: "庫存", purchases: "進貨", sales: "銷貨", shipping: "出貨單", invoices: "發票上傳", tracking: "貨品追蹤", production: "生產圖", contracts: "合同" };
+const ALL_VIEWS = ["dashboard", "products", "partners", "inventory", "purchases", "sales", "qinLiveSales", "shipping", "invoices", "tracking", "production", "contracts", "liveSales", "live", "knitters", "staff", "leave", "approvals", "payroll", "intl", "growth", "settings"];
+const ERP_VIEWS = ["products", "partners", "inventory", "purchases", "sales", "qinLiveSales", "shipping", "invoices", "tracking", "production", "contracts"];
+const ERP_TAB_LABELS = { products: "商品", partners: "往來單位", inventory: "庫存", purchases: "進貨", sales: "銷貨", qinLiveSales: "秦時線直播間銷售", shipping: "出貨單", invoices: "發票上傳", tracking: "貨品追蹤", production: "生產圖", contracts: "合同" };
 const LIVE_SYSTEM_VIEWS = ["live", "liveSales"];
 const VIEW_LABELS = { dashboard: "總覽", knitters: "織女系統", staff: "人事資料", leave: "請假申請", approvals: "審批系統", payroll: "會計系統", intl: "國貿系統", growth: "養成系統", settings: "資料設定" };
 
@@ -53,6 +53,7 @@ const defaultState = () => ({
   partners: [],
   purchases: [],
   sales: [],
+  qinLiveSales: [],
   invoiceUploads: [],
   yarnTracks: [],
   liveShows: [],
@@ -144,6 +145,7 @@ function isMeaningfulState(value) {
       (value.partners || []).length ||
       (value.purchases || []).length ||
       (value.sales || []).length ||
+      (value.qinLiveSales || []).length ||
       (value.invoiceUploads || []).length ||
       (value.liveSales || []).length ||
       (value.knitters || []).length ||
@@ -195,7 +197,6 @@ function normalizeState(saved) {
     ...partner,
     factoryType: partner.factoryType || (partner.type === "supplier" ? "原料廠" : ""),
     partnerType: partner.partnerType || (partner.type === "customer" ? "批發商" : ""),
-    liveRoomType: partner.liveRoomType || "",
     customerName: partner.customerName || (partner.type === "customer" ? partner.name : ""),
     email: partner.email || "",
     accountant: partner.accountant || "",
@@ -333,7 +334,7 @@ function permissionsForStaffRole(role) {
   if (normalized === "管理員") return [...ALL_VIEWS];
   if (normalized === "代理管理員") return ALL_VIEWS.filter((view) => view !== "settings");
   if (normalized === "核心人員") {
-    return ["dashboard", "products", "partners", "inventory", "purchases", "sales", "shipping", "invoices", "liveSales", "live", "knitters", "staff", "leave", "approvals", "payroll", "intl", "tracking", "production", "growth"];
+    return ["dashboard", "products", "partners", "inventory", "purchases", "sales", "qinLiveSales", "shipping", "invoices", "liveSales", "live", "knitters", "staff", "leave", "approvals", "payroll", "intl", "tracking", "production", "growth"];
   }
   return ["dashboard", "products", "inventory", "sales", "invoices", "liveSales", "leave", "growth"];
 }
@@ -541,7 +542,7 @@ function toast(message) {
 function productStock(productId) {
   const product = findProduct(productId);
   const inQty = state.purchases.filter((doc) => doc.productId === productId).reduce((sum, doc) => sum + Number(doc.qty), 0);
-  const outQty = state.sales.filter((doc) => doc.productId === productId).reduce((sum, doc) => sum + Number(doc.qty), 0);
+  const outQty = [...state.sales, ...(state.qinLiveSales || [])].filter((doc) => doc.productId === productId).reduce((sum, doc) => sum + Number(doc.qty), 0);
   return Number(product?.packageCount ?? product?.initialQty ?? 0) + inQty - outQty;
 }
 
@@ -623,11 +624,11 @@ function productOptions(select, mode) {
 }
 
 function partnerOptions(select, mode) {
-  const rows = state.partners.filter((partner) => mode === "factory" ? partner.factoryType : partner.partnerType || partner.customerName || partner.liveRoomType);
+  const rows = state.partners.filter((partner) => mode === "factory" ? partner.factoryType : partner.partnerType || partner.customerName);
   select.innerHTML = rows.map((partner) => {
     const label = mode === "factory"
       ? `${partner.factoryType} · ${partner.name || partner.customerName}`
-      : `${partner.liveRoomType || partner.partnerType || "合作商"} · ${partner.customerName || partner.name || partner.liveRoomType}`;
+      : `${partner.partnerType || "合作商"} · ${partner.customerName || partner.name}`;
     return `<option value="${partner.id}">${label}</option>`;
   }).join("") || `<option value="">請先建立${mode === "factory" ? "工廠單位" : "國內合作商"}</option>`;
 }
@@ -883,6 +884,7 @@ function knitterOptions(select) {
 function syncSelects() {
   productOptions($("#purchaseProduct"), "purchase");
   productOptions($("#saleProduct"), "sale");
+  productOptions($("#qinLiveSaleProduct"), "qinLiveSale");
   productOptions($("#shipmentProduct"), "shipment");
   partnerOptions($("#purchasePartner"), "factory");
   partnerOptions($("#salePartner"), "customer");
@@ -890,7 +892,7 @@ function syncSelects() {
   liveShowOptions($("#liveSaleShow"));
   positionOptions($("#staffTitle"));
   renderGrowthLevelNameInputs();
-  ["leaveStaff", "tripStaff", "purchaseRequestStaff", "proposalStaff", "growthStaff"].forEach((id) => staffOptions($(`#${id}`)));
+  ["leaveStaff", "tripStaff", "purchaseRequestStaff", "proposalStaff", "growthStaff", "qinLiveSaleHost"].forEach((id) => staffOptions($(`#${id}`)));
   ["adminPayrollStaff", "livePayrollStaff", "partnerBonusStaff"].forEach((id) => staffOptions($(`#${id}`)));
   ["leaveApprover", "tripApprover", "purchaseRequestApprover", "proposalApprover"].forEach((id) => staffOptions($(`#${id}`), true));
   knitterOptions($("#sampleKnitter"));
@@ -899,11 +901,14 @@ function syncSelects() {
   updateSampleLeadDays();
   renderProductCard($("#purchaseProduct")?.value, "purchaseProductCard");
   renderProductCard($("#saleProduct")?.value, "saleProductCard");
+  renderProductCard($("#qinLiveSaleProduct")?.value, "qinLiveSaleProductCard");
   renderProductCard($("#shipmentProduct")?.value, "shipmentProductCard");
   vatOptions($("#saleVat"), $("#saleProduct")?.value);
+  vatOptions($("#qinLiveSaleVat"), $("#qinLiveSaleProduct")?.value);
   vatOptions($("#shipmentVat"), $("#shipmentProduct")?.value);
   updateDocProduct("purchaseForm", "purchaseProductCard", "cost");
   updateDocProduct("saleForm", "saleProductCard", "price");
+  updateDocProduct("qinLiveSaleForm", "qinLiveSaleProductCard", "price");
   updateDocProduct("shipmentForm", "shipmentProductCard", "price");
 }
 
@@ -1082,7 +1087,6 @@ function renderPartners() {
   $("#partnerRows").innerHTML = rows.map((partner) => `<tr>
     <td>${partner.factoryType ? tag(partner.factoryType, "blue") : "-"}</td>
     <td>${partner.partnerType ? tag(partner.partnerType, "ok") : "-"}</td>
-    <td>${partner.liveRoomType ? tag(partner.liveRoomType, "warn") : "-"}</td>
     <td>${partner.customerName || "-"}</td>
     <td>${partner.name}</td>
     <td>${partner.contact || "-"}</td>
@@ -1092,7 +1096,7 @@ function renderPartners() {
     <td>${partner.owner || "-"}</td>
     <td>${partner.nationality || "-"}</td>
     <td>${rowActions("partner", partner.id, true)}</td>
-  </tr>`).join("") || emptyRow(12);
+  </tr>`).join("") || emptyRow(11);
 }
 
 function renderDocs(kind) {
@@ -1105,7 +1109,7 @@ function renderDocs(kind) {
     color: findProduct(doc.productId)?.color || "",
     colorName: findProduct(doc.productId)?.colorName || "",
     factoryColorNo: findProduct(doc.productId)?.factoryColorNo || "",
-    partnerName: findPartner(doc.partnerId)?.customerName || findPartner(doc.partnerId)?.name || findPartner(doc.partnerId)?.liveRoomType || "",
+    partnerName: findPartner(doc.partnerId)?.customerName || findPartner(doc.partnerId)?.name || "",
   }))).sort((a, b) => `${b.date}${b.no}`.localeCompare(`${a.date}${a.no}`));
   const tbody = kind === "purchase" ? $("#purchaseRows") : $("#saleRows");
   const count = kind === "purchase" ? $("#purchaseCount") : $("#saleCount");
@@ -1127,6 +1131,41 @@ function renderDocs(kind) {
     <td class="num">${money(Number(doc.qty) * Number(doc.price))}</td>
     <td>${rowActions(kind, doc.id)}</td>
   </tr>`).join("") || emptyRow(15);
+}
+
+function renderQinLiveSales() {
+  const rows = currentRows((state.qinLiveSales || []).map((doc) => ({
+    ...doc,
+    hostName: staffName(doc.hostId, doc.host || "-"),
+    productName: findProduct(doc.productId)?.name || "",
+    productSku: findProduct(doc.productId)?.sku || "",
+    yarnNo: findProduct(doc.productId)?.yarnNo || "",
+    color: findProduct(doc.productId)?.color || "",
+    colorName: findProduct(doc.productId)?.colorName || "",
+    factoryColorNo: findProduct(doc.productId)?.factoryColorNo || "",
+  }))).sort((a, b) => `${b.date}${b.no}`.localeCompare(`${a.date}${a.no}`));
+  const count = $("#qinLiveSaleCount");
+  const tbody = $("#qinLiveSaleRows");
+  if (!count || !tbody) return;
+  count.textContent = `${rows.length} 筆`;
+  tbody.innerHTML = rows.map((doc) => `<tr>
+    <td>${productThumb(findProduct(doc.productId))}</td>
+    <td>${doc.no}</td>
+    <td>${doc.date}</td>
+    <td>${doc.room || "-"}</td>
+    <td>${doc.hostName || "-"}</td>
+    <td>${doc.productSku || "-"}</td>
+    <td>${doc.productName || "-"}</td>
+    <td>${doc.yarnNo || "-"}</td>
+    <td>${doc.color || "-"}</td>
+    <td>${doc.colorName || "-"}</td>
+    <td>${doc.factoryColorNo || "-"}</td>
+    <td>${doc.vat || "-"}</td>
+    <td>${number(doc.qty)} 包</td>
+    <td class="num">${money(doc.price)}</td>
+    <td class="num">${money(Number(doc.qty) * Number(doc.price))}</td>
+    <td>${rowActions("qinLiveSale", doc.id)}</td>
+  </tr>`).join("") || emptyRow(16);
 }
 
 function renderInventory() {
@@ -1259,7 +1298,7 @@ function renderShipments() {
     <td>${productThumb(product)}</td>
     <td>${item.no}</td>
     <td>${item.date}</td>
-    <td>${partner?.customerName || partner?.name || partner?.liveRoomType || item.customer || "-"}</td>
+    <td>${partner?.customerName || partner?.name || item.customer || "-"}</td>
     <td>${product?.sku || "-"}</td>
     <td>${product?.name || item.productName || "-"}</td>
     <td>${item.vat || "-"}</td>
@@ -2141,6 +2180,7 @@ function renderAll() {
   renderPartners();
   renderDocs("purchase");
   renderDocs("sale");
+  renderQinLiveSales();
   renderInventory();
   renderInvoices();
   renderTracking();
@@ -2621,10 +2661,9 @@ function upsertPartner(form) {
   }
   const payload = {
     id: data.id || uid("par"),
-    type: data.partnerType || data.liveRoomType || customerName ? "customer" : "supplier",
+    type: data.partnerType || customerName ? "customer" : "supplier",
     factoryType: data.factoryType,
     partnerType: data.partnerType,
-    liveRoomType: data.liveRoomType,
     customerName,
     name: companyName,
     contact: data.contact.trim(),
@@ -2693,15 +2732,18 @@ function addDoc(form, kind) {
   const data = Object.fromEntries(new FormData(form));
   const product = findProduct(data.productId);
   if (!product) return toast("請先建立商品");
-  if (!findPartner(data.partnerId)) return toast(kind === "purchase" ? "請先建立工廠單位" : "請先建立國內合作商");
-  if (kind === "sale" && Number(data.qty) > productStock(data.productId)) return toast("庫存不足，無法建立銷貨單");
+  if (kind !== "qinLiveSale" && !findPartner(data.partnerId)) return toast(kind === "purchase" ? "請先建立工廠單位" : "請先建立國內合作商");
+  if (kind !== "purchase" && Number(data.qty) > productStock(data.productId)) return toast("庫存不足，無法建立銷售單");
 
-  const list = kind === "purchase" ? state.purchases : state.sales;
-  const prefix = kind === "purchase" ? "PO" : "SO";
+  const list = kind === "purchase" ? state.purchases : kind === "qinLiveSale" ? state.qinLiveSales : state.sales;
+  const prefix = kind === "purchase" ? "PO" : kind === "qinLiveSale" ? "QSL" : "SO";
   const doc = {
-    id: uid(kind === "purchase" ? "pur" : "sal"),
+    id: uid(kind === "purchase" ? "pur" : kind === "qinLiveSale" ? "qsl" : "sal"),
     no: `${prefix}-${today().replaceAll("-", "")}-${String(list.length + 1).padStart(3, "0")}`,
-    partnerId: data.partnerId,
+    partnerId: data.partnerId || "",
+    room: data.room || "",
+    hostId: data.hostId || "",
+    host: staffName(data.hostId, ""),
     productId: data.productId,
     vat: data.vat || product.vat || "",
     qty: Number(data.qty),
@@ -2712,10 +2754,9 @@ function addDoc(form, kind) {
   list.push(doc);
   saveState();
   resetForm(form);
-  toast(kind === "purchase" ? "進貨單已新增" : "銷貨單已新增");
+  toast(kind === "purchase" ? "進貨單已建立" : kind === "qinLiveSale" ? "秦時線直播間銷售已建立" : "銷貨單已建立");
   renderAll();
 }
-
 function invoiceLinesFromForm(form) {
   return [...form.querySelectorAll("[data-invoice-line]")].map((row) => {
     const qty = Number(row.querySelector("[name='lineQty']").value || 0);
@@ -2786,12 +2827,12 @@ function deleteItem(type, id) {
     return;
   }
   const hasDoc = type === "product"
-    ? state.purchases.some((doc) => doc.productId === id) || state.sales.some((doc) => doc.productId === id)
+    ? state.purchases.some((doc) => doc.productId === id) || state.sales.some((doc) => doc.productId === id) || (state.qinLiveSales || []).some((doc) => doc.productId === id)
     : type === "partner"
       ? state.purchases.some((doc) => doc.partnerId === id) || state.sales.some((doc) => doc.partnerId === id)
       : false;
   if (hasDoc) return toast("已有單據使用，請保留資料");
-  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", invoiceUpload: "invoiceUploads", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", yarnShipment: "yarnShipments", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs", growthRecord: "growthRecords" };
+  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", qinLiveSale: "qinLiveSales", invoiceUpload: "invoiceUploads", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", yarnShipment: "yarnShipments", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs", growthRecord: "growthRecords" };
   if (type === "staff") {
     const staff = (state.staff || []).find((item) => item.id === id);
     pruneUserAccountsForDeletedStaff(id, staff?.phone);
@@ -3325,7 +3366,7 @@ function docRows(kind) {
     return [
       doc.no,
       doc.date,
-      kind === "purchase" ? `${partner?.factoryType || ""} ${partner?.name || partner?.customerName || ""}`.trim() : `${partner?.liveRoomType || partner?.partnerType || ""} ${partner?.customerName || partner?.name || ""}`.trim(),
+      kind === "purchase" ? `${partner?.factoryType || ""} ${partner?.name || partner?.customerName || ""}`.trim() : `${partner?.partnerType || ""} ${partner?.customerName || partner?.name || ""}`.trim(),
       product?.name || "",
       product?.sku || "",
       product?.yarnNo || "",
@@ -3347,6 +3388,7 @@ function reportContent(view) {
     partners: "往來單位報表",
     purchases: "進貨報表",
     sales: "銷貨報表",
+    qinLiveSales: "秦時線直播間銷售報表",
     inventory: "銷售產品庫存報表",
     tracking: "貨品追蹤報表",
     production: "生產圖報表",
@@ -3393,9 +3435,10 @@ function reportContent(view) {
   }
 
   const reports = {
-    partners: () => reportTable(["工廠類別", "合作商類別", "直播間", "客戶名稱", "公司名稱", "聯絡人", "電話", "E-MAIL", "會計師", "老闆", "國籍"], state.partners.map((p) => [p.factoryType, p.partnerType, p.liveRoomType, p.customerName, p.name, p.contact, p.phone, p.email, p.accountant, p.owner, p.nationality])),
+    partners: () => reportTable(["工廠類別", "合作商類別", "客戶名稱", "公司名稱", "聯絡人", "電話", "E-MAIL", "會計師", "老闆", "國籍"], state.partners.map((p) => [p.factoryType, p.partnerType, p.customerName, p.name, p.contact, p.phone, p.email, p.accountant, p.owner, p.nationality])),
     purchases: () => reportTable(["單號", "日期", "工廠單位", "銷售產品", "產品編號", "紗號", "色號", "色名", "工廠色號", "缸號", "包數", "單包進價", "金額"], docRows("purchase")),
     sales: () => reportTable(["單號", "日期", "國內合作商", "銷售產品", "產品編號", "紗號", "色號", "色名", "工廠色號", "缸號", "包數", "單包售價", "金額"], docRows("sale")),
+    qinLiveSales: () => reportTable(["單號", "日期", "直播間", "主播", "銷售產品", "產品編號", "紗號", "色號", "色名", "工廠色號", "缸號", "包數", "單包售價", "金額"], (state.qinLiveSales || []).map((doc) => { const product = findProduct(doc.productId); return [doc.no, doc.date, doc.room, staffName(doc.hostId, doc.host), product?.name, product?.sku, product?.yarnNo, product?.color, product?.colorName, product?.factoryColorNo, doc.vat, `${number(doc.qty)} 包`, money(doc.price), money(Number(doc.qty) * Number(doc.price))]; })),
     inventory: () => reportTable(["編號", "銷售產品", "紗號", "色號", "色名", "工廠色號", "工廠生產重量", "打團重量(一團)", "產品包數", "現有庫存", "安全量", "庫存成本"], saleProducts.map((p) => [p.sku, p.name, p.yarnNo, p.color, p.colorName, p.factoryColorNo, `${number(p.factoryWeight)} KG`, `${number(p.ballWeight)} g`, `${number(p.packageCount)} 包`, `${number(productStock(p.id))} 包`, number(p.minStock), money(productStock(p.id) * Number(p.cost))])),
     tracking: () => reportTable(["追蹤編號", "品名", "紗號", "色號", "缸號", "數量", "進度", "預計完成", "備註"], (state.yarnTracks || []).map((p) => [p.code, p.name, p.yarnNo, p.color, p.vat, `${number(p.qty)} ${p.unit || ""}`, p.status, p.dueDate, p.note])),
     production: () => reportTable(["追蹤編號", "品名", "目前進度", "預計完成", "剩餘天數", "風險"], (state.yarnTracks || []).map((p) => [p.code, p.name, p.status, p.dueDate, daysLeft(p.dueDate) === "" ? "" : `${daysLeft(p.dueDate)} 天`, p.status === "已完成" ? "完成" : daysLeft(p.dueDate) < 0 ? "逾期" : "正常"])),
@@ -3405,7 +3448,7 @@ function reportContent(view) {
       ...(state.knitters || []).map((p) => ["織女資料", p.contractDate, p.name, p.studioName || "-", p.contactPhone || "-", (p.styles || []).join("、"), `${number(p.leadTime)} 天`, p.tutorialAvailable, (p.styles || []).map((style) => `${style} ${money(p.prices?.[style] || 0)}`).join("、")]),
       ...(state.samples || []).map((p) => { const info = sampleDeliveryInfo(p); const knitter = findKnitter(p.knitterId); return ["樣衣&配件", p.receivedDate, knitterName(p.knitterId), knitter?.studioName || "-", knitter?.contactPhone || "-", p.style, `${info.text} / ${info.rating}`, p.status, money(p.price)]; }),
     ]),
-    shipping: () => reportTable(["單號", "日期", "國內合作商", "產品編號", "銷售產品", "缸號", "出貨包數", "單包價格", "小計", "狀態"], (state.shipments || []).map((p) => { const product = findProduct(p.productId); const partner = findPartner(p.partnerId); return [p.no, p.date, partner?.customerName || partner?.name || partner?.liveRoomType || p.customer, product?.sku, product?.name || p.productName, p.vat, `${number(p.qty)} 包`, money(p.price), money(Number(p.qty) * Number(p.price)), p.status]; })),
+    shipping: () => reportTable(["單號", "日期", "國內合作商", "產品編號", "銷售產品", "缸號", "出貨包數", "單包價格", "小計", "狀態"], (state.shipments || []).map((p) => { const product = findProduct(p.productId); const partner = findPartner(p.partnerId); return [p.no, p.date, partner?.customerName || partner?.name || p.customer, product?.sku, product?.name || p.productName, p.vat, `${number(p.qty)} 包`, money(p.price), money(Number(p.qty) * Number(p.price)), p.status]; })),
     staff: () => reportTable(["編號", "姓名", "部門", "職位", "角色", "帳號／手機號", "狀態"], (state.staff || []).map((p) => [p.code, p.name, p.dept, p.title, p.role, p.phone, p.status])),
     leave: () => reportTable(["編號", "姓名", "類型", "開始日期", "結束日期", "天數", "狀態", "審批人"], (state.leaveRequests || []).map((p) => [p.code, staffName(p.staffId, p.name || "-"), p.type, p.startDate, p.endDate, p.days, p.status, staffName(p.approverId, p.approver || "-")])),
     approvals: () => reportTable(["類型", "編號", "申請人", "主旨", "日期", "金額/天數", "主管機關", "狀態"], approvalRows().map((p) => [p.typeName, p.code, staffName(p.staffId), p.title, p.date, p.amount, staffName(p.approverId), p.status])),
@@ -3698,6 +3741,10 @@ function bindEvents() {
     event.preventDefault();
     addDoc(event.currentTarget, "sale");
   });
+  $("#qinLiveSaleForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addDoc(event.currentTarget, "qinLiveSale");
+  });
   $("#invoiceUploadForm").addEventListener("submit", (event) => {
     event.preventDefault();
     addInvoiceUpload(event.currentTarget);
@@ -3846,6 +3893,10 @@ function bindEvents() {
     updateDocProduct("saleForm", "saleProductCard", "price");
     vatOptions($("#saleVat"), event.target.value);
   });
+  $("#qinLiveSaleProduct").addEventListener("change", (event) => {
+    updateDocProduct("qinLiveSaleForm", "qinLiveSaleProductCard", "price");
+    vatOptions($("#qinLiveSaleVat"), event.target.value);
+  });
   $("#shipmentProduct").addEventListener("change", (event) => {
     updateDocProduct("shipmentForm", "shipmentProductCard", "price");
     vatOptions($("#shipmentVat"), event.target.value);
@@ -3867,6 +3918,7 @@ async function init() {
   resetForm($("#sellProductForm"));
   resetForm($("#purchaseForm"));
   resetForm($("#saleForm"));
+  resetForm($("#qinLiveSaleForm"));
   resetForm($("#invoiceUploadForm"));
   resetForm($("#trackingForm"));
   resetForm($("#liveForm"));

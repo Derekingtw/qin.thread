@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260530-02" />
+    <link rel="stylesheet" href="styles.css?v=20260530-03" />
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -301,7 +301,6 @@
             <input type="hidden" name="id" />
             <label>工廠類別<select name="factoryType"><option value="">未指定</option><option>原料廠</option><option>染廠</option><option>倒筒廠</option><option>打團廠</option></select></label>
             <label>國內合作商類別<select name="partnerType"><option value="">未指定</option><option>批發商</option><option>經銷商</option><option>達人</option><option>分店</option></select></label>
-            <label>秦時線直播間<select name="liveRoomType"><option value="">未指定</option><option>秦時線</option><option>秦時線店鋪</option></select></label>
             <label>客戶名稱<input name="customerName" placeholder="客戶自行填寫" /></label>
             <label>公司名稱<input name="name" placeholder="秦時線合作單位" /></label>
             <label>聯絡人<input name="contact" placeholder="王小姐" /></label>
@@ -317,7 +316,7 @@
             <div class="panel-head"><h2>單位清單</h2><span id="partnerCount" class="pill">0 筆</span></div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>工廠類別</th><th>合作商類別</th><th>直播間</th><th>客戶名稱</th><th>公司名稱</th><th>聯絡人</th><th>電話</th><th>E-MAIL</th><th>會計師</th><th>老闆</th><th>國籍</th><th></th></tr></thead>
+                <thead><tr><th>工廠類別</th><th>合作商類別</th><th>客戶名稱</th><th>公司名稱</th><th>聯絡人</th><th>電話</th><th>E-MAIL</th><th>會計師</th><th>老闆</th><th>國籍</th><th></th></tr></thead>
                 <tbody id="partnerRows"></tbody>
               </table>
             </div>
@@ -393,6 +392,35 @@
               <table>
                 <thead><tr><th>圖片</th><th>單號</th><th>日期</th><th>國內合作商</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>色名</th><th>工廠色號</th><th>缸號</th><th>銷貨包數</th><th>單包售價</th><th>金額</th><th></th></tr></thead>
                 <tbody id="saleRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="qinLiveSales">
+        <div class="section-tabs system-tabs" role="tablist" aria-label="ERP系統分類"></div>
+        <div class="workspace">
+          <form class="editor" id="qinLiveSaleForm">
+            <h2>秦時線直播間銷售</h2>
+            <label>直播間<select required name="room"><option>秦時線</option><option>秦時線店鋪</option></select></label>
+            <label>主播<select required name="hostId" id="qinLiveSaleHost"></select></label>
+            <label>銷售產品<select required name="productId" id="qinLiveSaleProduct"></select></label>
+            <label>缸號<select name="vat" id="qinLiveSaleVat"></select></label>
+            <div class="product-summary" id="qinLiveSaleProductCard"></div>
+            <div class="two-col">
+              <label>銷售包數<span class="unit-field"><input required name="qty" type="number" min="1" step="1" /><b>包</b></span></label>
+              <label>單包售價<input required name="price" type="number" min="0" step="1" /></label>
+            </div>
+            <label>日期<input required name="date" type="date" /></label>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>秦時線直播間銷售紀錄</h2><span id="qinLiveSaleCount" class="pill">0 筆</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>圖片</th><th>單號</th><th>日期</th><th>直播間</th><th>主播</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>色名</th><th>工廠色號</th><th>缸號</th><th>銷售包數</th><th>單包售價</th><th>金額</th><th></th></tr></thead>
+                <tbody id="qinLiveSaleRows"></tbody>
               </table>
             </div>
           </section>
@@ -1179,6 +1207,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260530-02"></script>
+    <script src="app.js?v=20260530-03"></script>
   </body>
 </html>

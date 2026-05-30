@@ -50,6 +50,7 @@ function hasMeaningfulState(data) {
       (data.partners || []).length ||
       (data.purchases || []).length ||
       (data.sales || []).length ||
+      (data.qinLiveSales || []).length ||
       (data.liveSales || []).length ||
       (data.knitters || []).length ||
       (data.samples || []).length
