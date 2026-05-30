@@ -3617,6 +3617,20 @@ function seedData() {
 
 function bindEvents() {
   ensureErpTabs();
+  document.addEventListener("click", (event) => {
+    const authTab = event.target.closest("[data-auth-tab]");
+    if (authTab) setAuthTab(authTab.dataset.authTab);
+  });
+  document.addEventListener("submit", (event) => {
+    if (event.target.id === "loginForm") {
+      event.preventDefault();
+      loginUser(event.target);
+    }
+    if (event.target.id === "registerForm") {
+      event.preventDefault();
+      registerUser(event.target);
+    }
+  });
   $$(".nav-item").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   $$("[data-action='goto']").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   $$("[data-product-tab]").forEach((button) => button.addEventListener("click", () => setProductTab(button.dataset.productTab)));
@@ -3627,19 +3641,11 @@ function bindEvents() {
   $$("[data-system-tab]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.systemTab)));
   $$("[data-setting-tab]").forEach((button) => button.addEventListener("click", () => setSettingTab(button.dataset.settingTab)));
   $$("[data-staff-tab]").forEach((button) => button.addEventListener("click", () => setStaffTab(button.dataset.staffTab)));
-  $$("[data-auth-tab]").forEach((button) => button.addEventListener("click", () => setAuthTab(button.dataset.authTab)));
+  $$("[data-auth-tab]").forEach((button) => button.addEventListener("pointerup", () => setAuthTab(button.dataset.authTab)));
   $("#quickSaleBtn").addEventListener("click", () => setView("sales"));
   $("#reportBtn").addEventListener("click", () => openReport(activeView));
   $("#langBtn").addEventListener("click", toggleLanguage);
   $("#logoutBtn").addEventListener("click", logoutUser);
-  $("#loginForm").addEventListener("submit", (event) => {
-    event.preventDefault();
-    loginUser(event.currentTarget);
-  });
-  $("#registerForm").addEventListener("submit", (event) => {
-    event.preventDefault();
-    registerUser(event.currentTarget);
-  });
   $("#announcementForm").addEventListener("submit", (event) => {
     event.preventDefault();
     addAnnouncement(event.currentTarget);
