@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260530-01" />
+    <link rel="stylesheet" href="styles.css?v=20260530-02" />
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -261,7 +261,13 @@
             </div>
           </form>
           <section class="panel wide">
-            <div class="panel-head"><h2 id="productListTitle">銷售產品清單</h2><span id="productCount" class="pill">0 筆</span></div>
+            <div class="panel-head list-head">
+              <h2 id="productListTitle">銷售產品清單</h2>
+              <div class="list-tools">
+                <label class="compact-select">品名篩選<select id="productNameFilter"></select></label>
+                <span id="productCount" class="pill">0 筆</span>
+              </div>
+            </div>
             <div class="table-wrap product-list active" data-product-panel="saleGoods">
               <table>
                 <thead><tr><th>圖片</th><th>編號</th><th>品名</th><th>紗號</th><th>支數</th><th>成分</th><th>色號</th><th>色名</th><th>工廠色號</th><th>缸號</th><th>工廠生產重量</th><th>打團重量(一團)</th><th>打團總數量</th><th>單包團數</th><th>產品包數</th><th>售價</th><th></th></tr></thead>
@@ -295,6 +301,7 @@
             <input type="hidden" name="id" />
             <label>工廠類別<select name="factoryType"><option value="">未指定</option><option>原料廠</option><option>染廠</option><option>倒筒廠</option><option>打團廠</option></select></label>
             <label>國內合作商類別<select name="partnerType"><option value="">未指定</option><option>批發商</option><option>經銷商</option><option>達人</option><option>分店</option></select></label>
+            <label>秦時線直播間<select name="liveRoomType"><option value="">未指定</option><option>秦時線</option><option>秦時線店鋪</option></select></label>
             <label>客戶名稱<input name="customerName" placeholder="客戶自行填寫" /></label>
             <label>公司名稱<input name="name" placeholder="秦時線合作單位" /></label>
             <label>聯絡人<input name="contact" placeholder="王小姐" /></label>
@@ -310,7 +317,7 @@
             <div class="panel-head"><h2>單位清單</h2><span id="partnerCount" class="pill">0 筆</span></div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>工廠類別</th><th>合作商類別</th><th>客戶名稱</th><th>公司名稱</th><th>聯絡人</th><th>電話</th><th>E-MAIL</th><th>會計師</th><th>老闆</th><th>國籍</th><th></th></tr></thead>
+                <thead><tr><th>工廠類別</th><th>合作商類別</th><th>直播間</th><th>客戶名稱</th><th>公司名稱</th><th>聯絡人</th><th>電話</th><th>E-MAIL</th><th>會計師</th><th>老闆</th><th>國籍</th><th></th></tr></thead>
                 <tbody id="partnerRows"></tbody>
               </table>
             </div>
@@ -1172,6 +1179,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260530-01"></script>
+    <script src="app.js?v=20260530-02"></script>
   </body>
 </html>

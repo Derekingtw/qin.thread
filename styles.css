@@ -444,6 +444,32 @@ h2 {
   margin-bottom: 14px;
 }
 
+.list-head {
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.list-tools {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.compact-select {
+  min-width: 220px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.compact-select select {
+  height: 38px;
+  margin-top: 5px;
+  padding: 0 12px;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -1627,7 +1653,17 @@ input[type="file"] {
 
 .table-wrap {
   width: 100%;
-  overflow-x: auto;
+  overflow: auto;
+  max-height: min(68vh, 720px);
+  scrollbar-gutter: stable both-edges;
+}
+
+.table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(255, 253, 245, .98);
+  box-shadow: 0 1px 0 var(--line);
 }
 
 table {

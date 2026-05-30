@@ -94,6 +94,7 @@ let state = normalizeState(loadState());
 let activeView = "dashboard";
 let searchTerm = "";
 let productTab = "saleGoods";
+let productNameFilter = "";
 let currentLang = "zh-TW";
 let staffTab = "regular";
 let knitterTab = "profiles";
@@ -194,6 +195,7 @@ function normalizeState(saved) {
     ...partner,
     factoryType: partner.factoryType || (partner.type === "supplier" ? "原料廠" : ""),
     partnerType: partner.partnerType || (partner.type === "customer" ? "批發商" : ""),
+    liveRoomType: partner.liveRoomType || "",
     customerName: partner.customerName || (partner.type === "customer" ? partner.name : ""),
     email: partner.email || "",
     accountant: partner.accountant || "",
@@ -601,6 +603,15 @@ function currentRows(rows) {
   return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(term));
 }
 
+function productNameOptions(rows) {
+  const select = $("#productNameFilter");
+  if (!select) return;
+  const names = [...new Set(rows.map((product) => product.name).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+  if (productNameFilter && !names.includes(productNameFilter)) productNameFilter = "";
+  select.innerHTML = `<option value="">全部品名</option>${names.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}`;
+  select.value = productNameFilter;
+}
+
 function productOptions(select, mode) {
   const rows = state.products.filter((product) => product.type === "sale");
   const options = rows.map((product) => {
@@ -612,11 +623,11 @@ function productOptions(select, mode) {
 }
 
 function partnerOptions(select, mode) {
-  const rows = state.partners.filter((partner) => mode === "factory" ? partner.factoryType : partner.partnerType || partner.customerName);
+  const rows = state.partners.filter((partner) => mode === "factory" ? partner.factoryType : partner.partnerType || partner.customerName || partner.liveRoomType);
   select.innerHTML = rows.map((partner) => {
     const label = mode === "factory"
       ? `${partner.factoryType} · ${partner.name || partner.customerName}`
-      : `${partner.partnerType || "合作商"} · ${partner.customerName || partner.name}`;
+      : `${partner.liveRoomType || partner.partnerType || "合作商"} · ${partner.customerName || partner.name || partner.liveRoomType}`;
     return `<option value="${partner.id}">${label}</option>`;
   }).join("") || `<option value="">請先建立${mode === "factory" ? "工廠單位" : "國內合作商"}</option>`;
 }
@@ -1026,8 +1037,13 @@ function inlineSelect(value, type, id, field, options) {
 }
 
 function renderProducts() {
-  const saleRows = currentRows(state.products.filter((product) => product.type === "sale"));
-  const officeRows = currentRows(state.products.filter((product) => product.type !== "sale"));
+  const baseSaleRows = state.products.filter((product) => product.type === "sale");
+  const baseOfficeRows = state.products.filter((product) => product.type !== "sale");
+  const baseRows = productTab === "saleGoods" ? baseSaleRows : baseOfficeRows;
+  productNameOptions(baseRows);
+  const nameFilteredRows = productNameFilter ? baseRows.filter((product) => product.name === productNameFilter) : baseRows;
+  const saleRows = currentRows(productTab === "saleGoods" ? nameFilteredRows : baseSaleRows);
+  const officeRows = currentRows(productTab === "officeGoods" ? nameFilteredRows : baseOfficeRows);
   $("#productListTitle").textContent = productTab === "saleGoods" ? "銷售產品清單" : "一般產品清單";
   $("#productCount").textContent = `${productTab === "saleGoods" ? saleRows.length : officeRows.length} 筆`;
   $("#sellProductRows").innerHTML = saleRows.map((product) => `<tr>
@@ -1066,6 +1082,7 @@ function renderPartners() {
   $("#partnerRows").innerHTML = rows.map((partner) => `<tr>
     <td>${partner.factoryType ? tag(partner.factoryType, "blue") : "-"}</td>
     <td>${partner.partnerType ? tag(partner.partnerType, "ok") : "-"}</td>
+    <td>${partner.liveRoomType ? tag(partner.liveRoomType, "warn") : "-"}</td>
     <td>${partner.customerName || "-"}</td>
     <td>${partner.name}</td>
     <td>${partner.contact || "-"}</td>
@@ -1075,7 +1092,7 @@ function renderPartners() {
     <td>${partner.owner || "-"}</td>
     <td>${partner.nationality || "-"}</td>
     <td>${rowActions("partner", partner.id, true)}</td>
-  </tr>`).join("") || emptyRow(11);
+  </tr>`).join("") || emptyRow(12);
 }
 
 function renderDocs(kind) {
@@ -1088,7 +1105,7 @@ function renderDocs(kind) {
     color: findProduct(doc.productId)?.color || "",
     colorName: findProduct(doc.productId)?.colorName || "",
     factoryColorNo: findProduct(doc.productId)?.factoryColorNo || "",
-    partnerName: findPartner(doc.partnerId)?.customerName || findPartner(doc.partnerId)?.name || "",
+    partnerName: findPartner(doc.partnerId)?.customerName || findPartner(doc.partnerId)?.name || findPartner(doc.partnerId)?.liveRoomType || "",
   }))).sort((a, b) => `${b.date}${b.no}`.localeCompare(`${a.date}${a.no}`));
   const tbody = kind === "purchase" ? $("#purchaseRows") : $("#saleRows");
   const count = kind === "purchase" ? $("#purchaseCount") : $("#saleCount");
@@ -1242,7 +1259,7 @@ function renderShipments() {
     <td>${productThumb(product)}</td>
     <td>${item.no}</td>
     <td>${item.date}</td>
-    <td>${partner?.customerName || partner?.name || item.customer || "-"}</td>
+    <td>${partner?.customerName || partner?.name || partner?.liveRoomType || item.customer || "-"}</td>
     <td>${product?.sku || "-"}</td>
     <td>${product?.name || item.productName || "-"}</td>
     <td>${item.vat || "-"}</td>
@@ -2157,6 +2174,7 @@ function setView(view) {
 
 function setProductTab(tab) {
   productTab = tab;
+  productNameFilter = "";
   $$("[data-product-tab]").forEach((button) => button.classList.toggle("active", button.dataset.productTab === tab));
   $$("[data-product-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.productPanel === tab));
   renderProducts();
@@ -2542,6 +2560,7 @@ function upsertProduct(form) {
     updatedAt: Date.now(),
   };
   state.products = data.id ? state.products.map((item) => item.id === data.id ? payload : item) : [...state.products, payload];
+  productNameFilter = payload.name;
   saveState();
   resetForm(form);
   toast(data.id ? "商品修改已儲存" : "商品已新增");
@@ -2585,6 +2604,7 @@ function upsertSellProduct(form) {
     updatedAt: Date.now(),
   };
   state.products = data.id ? state.products.map((item) => item.id === data.id ? payload : item) : [...state.products, payload];
+  productNameFilter = payload.name;
   saveState();
   resetForm(form);
   toast(data.id ? "銷售產品修改已儲存" : "銷售產品已新增");
@@ -2601,9 +2621,10 @@ function upsertPartner(form) {
   }
   const payload = {
     id: data.id || uid("par"),
-    type: data.partnerType || customerName ? "customer" : "supplier",
+    type: data.partnerType || data.liveRoomType || customerName ? "customer" : "supplier",
     factoryType: data.factoryType,
     partnerType: data.partnerType,
+    liveRoomType: data.liveRoomType,
     customerName,
     name: companyName,
     contact: data.contact.trim(),
@@ -3304,7 +3325,7 @@ function docRows(kind) {
     return [
       doc.no,
       doc.date,
-      kind === "purchase" ? `${partner?.factoryType || ""} ${partner?.name || partner?.customerName || ""}`.trim() : `${partner?.partnerType || ""} ${partner?.customerName || partner?.name || ""}`.trim(),
+      kind === "purchase" ? `${partner?.factoryType || ""} ${partner?.name || partner?.customerName || ""}`.trim() : `${partner?.liveRoomType || partner?.partnerType || ""} ${partner?.customerName || partner?.name || ""}`.trim(),
       product?.name || "",
       product?.sku || "",
       product?.yarnNo || "",
@@ -3372,7 +3393,7 @@ function reportContent(view) {
   }
 
   const reports = {
-    partners: () => reportTable(["工廠類別", "合作商類別", "客戶名稱", "公司名稱", "聯絡人", "電話", "E-MAIL", "會計師", "老闆", "國籍"], state.partners.map((p) => [p.factoryType, p.partnerType, p.customerName, p.name, p.contact, p.phone, p.email, p.accountant, p.owner, p.nationality])),
+    partners: () => reportTable(["工廠類別", "合作商類別", "直播間", "客戶名稱", "公司名稱", "聯絡人", "電話", "E-MAIL", "會計師", "老闆", "國籍"], state.partners.map((p) => [p.factoryType, p.partnerType, p.liveRoomType, p.customerName, p.name, p.contact, p.phone, p.email, p.accountant, p.owner, p.nationality])),
     purchases: () => reportTable(["單號", "日期", "工廠單位", "銷售產品", "產品編號", "紗號", "色號", "色名", "工廠色號", "缸號", "包數", "單包進價", "金額"], docRows("purchase")),
     sales: () => reportTable(["單號", "日期", "國內合作商", "銷售產品", "產品編號", "紗號", "色號", "色名", "工廠色號", "缸號", "包數", "單包售價", "金額"], docRows("sale")),
     inventory: () => reportTable(["編號", "銷售產品", "紗號", "色號", "色名", "工廠色號", "工廠生產重量", "打團重量(一團)", "產品包數", "現有庫存", "安全量", "庫存成本"], saleProducts.map((p) => [p.sku, p.name, p.yarnNo, p.color, p.colorName, p.factoryColorNo, `${number(p.factoryWeight)} KG`, `${number(p.ballWeight)} g`, `${number(p.packageCount)} 包`, `${number(productStock(p.id))} 包`, number(p.minStock), money(productStock(p.id) * Number(p.cost))])),
@@ -3384,7 +3405,7 @@ function reportContent(view) {
       ...(state.knitters || []).map((p) => ["織女資料", p.contractDate, p.name, p.studioName || "-", p.contactPhone || "-", (p.styles || []).join("、"), `${number(p.leadTime)} 天`, p.tutorialAvailable, (p.styles || []).map((style) => `${style} ${money(p.prices?.[style] || 0)}`).join("、")]),
       ...(state.samples || []).map((p) => { const info = sampleDeliveryInfo(p); const knitter = findKnitter(p.knitterId); return ["樣衣&配件", p.receivedDate, knitterName(p.knitterId), knitter?.studioName || "-", knitter?.contactPhone || "-", p.style, `${info.text} / ${info.rating}`, p.status, money(p.price)]; }),
     ]),
-    shipping: () => reportTable(["單號", "日期", "國內合作商", "產品編號", "銷售產品", "缸號", "出貨包數", "單包價格", "小計", "狀態"], (state.shipments || []).map((p) => { const product = findProduct(p.productId); const partner = findPartner(p.partnerId); return [p.no, p.date, partner?.customerName || partner?.name || p.customer, product?.sku, product?.name || p.productName, p.vat, `${number(p.qty)} 包`, money(p.price), money(Number(p.qty) * Number(p.price)), p.status]; })),
+    shipping: () => reportTable(["單號", "日期", "國內合作商", "產品編號", "銷售產品", "缸號", "出貨包數", "單包價格", "小計", "狀態"], (state.shipments || []).map((p) => { const product = findProduct(p.productId); const partner = findPartner(p.partnerId); return [p.no, p.date, partner?.customerName || partner?.name || partner?.liveRoomType || p.customer, product?.sku, product?.name || p.productName, p.vat, `${number(p.qty)} 包`, money(p.price), money(Number(p.qty) * Number(p.price)), p.status]; })),
     staff: () => reportTable(["編號", "姓名", "部門", "職位", "角色", "帳號／手機號", "狀態"], (state.staff || []).map((p) => [p.code, p.name, p.dept, p.title, p.role, p.phone, p.status])),
     leave: () => reportTable(["編號", "姓名", "類型", "開始日期", "結束日期", "天數", "狀態", "審批人"], (state.leaveRequests || []).map((p) => [p.code, staffName(p.staffId, p.name || "-"), p.type, p.startDate, p.endDate, p.days, p.status, staffName(p.approverId, p.approver || "-")])),
     approvals: () => reportTable(["類型", "編號", "申請人", "主旨", "日期", "金額/天數", "主管機關", "狀態"], approvalRows().map((p) => [p.typeName, p.code, staffName(p.staffId), p.title, p.date, p.amount, staffName(p.approverId), p.status])),
@@ -3642,6 +3663,11 @@ function bindEvents() {
   $("#globalSearch").addEventListener("input", (event) => {
     searchTerm = event.target.value.trim();
     renderAll();
+  });
+  $("#productNameFilter")?.addEventListener("change", (event) => {
+    productNameFilter = event.target.value;
+    renderProducts();
+    if (window.lucide) window.lucide.createIcons();
   });
   $("#seedBtn").addEventListener("click", seedData);
   $("#resetBtn").addEventListener("click", () => {
