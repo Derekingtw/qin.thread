@@ -14,6 +14,11 @@ const uid = (prefix) => `${prefix}-${Date.now().toString(36)}-${Math.random().to
 const money = (value) => Number(value || 0).toLocaleString("zh-TW", { style: "currency", currency: "TWD", maximumFractionDigits: 0 });
 const number = (value) => Number(value || 0).toLocaleString("zh-TW");
 const ceilNumber = (value) => Math.ceil(Number(value || 0));
+const ballQtyFromWeight = (factoryWeight, ballWeight) => {
+  const weight = Number(factoryWeight || 0);
+  const ball = Number(ballWeight || 0);
+  return ball > 0 ? ceilNumber((weight * 1000) / ball) : 0;
+};
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const MAX_INVOICE_FILE_BYTES = 8 * 1024 * 1024;
 const MAX_BACKGROUND_BYTES = 2 * 1024 * 1024;
@@ -171,11 +176,14 @@ function normalizeState(saved) {
   next.products = (next.products || []).map((product) => ({
     ...product,
     type: product.type || "office",
+    colorName: product.colorName || "",
+    factoryColorNo: product.factoryColorNo || "",
     factoryWeight: Number(product.factoryWeight ?? product.initialQty ?? 0),
-    productQty: Number(product.productQty ?? product.initialQty ?? 0),
+    ballWeight: Number(product.ballWeight || 0),
+    productQty: Number(product.ballWeight ? ballQtyFromWeight(product.factoryWeight ?? product.initialQty ?? 0, product.ballWeight) : (product.productQty ?? product.initialQty ?? 0)),
     packSize: Number(product.packSize || 1),
-    packageCount: Number(product.packageCount || ceilNumber(Number(product.productQty ?? product.initialQty ?? 0) / Number(product.packSize || 1))),
-    initialQty: Number(product.packageCount || ceilNumber(Number(product.productQty ?? product.initialQty ?? 0) / Number(product.packSize || 1))),
+    packageCount: Number(product.packageCount || ceilNumber(Number(product.ballWeight ? ballQtyFromWeight(product.factoryWeight ?? product.initialQty ?? 0, product.ballWeight) : (product.productQty ?? product.initialQty ?? 0)) / Number(product.packSize || 1))),
+    initialQty: Number(product.packageCount || ceilNumber(Number(product.ballWeight ? ballQtyFromWeight(product.factoryWeight ?? product.initialQty ?? 0, product.ballWeight) : (product.productQty ?? product.initialQty ?? 0)) / Number(product.packSize || 1))),
     minStock: Number(product.minStock || 0),
     cost: Number(product.cost || 0),
     price: Number(product.price || 0),
@@ -901,9 +909,11 @@ function renderProductCard(productId, targetId) {
     <div><span>產品編號</span><strong>${product.sku}</strong></div>
     <div><span>目前庫存</span><strong>${number(productStock(product.id))} 包</strong></div>
     <div><span>紗號 / 色號</span><strong>${product.yarnNo || "-"} / ${product.color || "-"}</strong></div>
+    <div><span>色名 / 工廠色號</span><strong>${product.colorName || "-"} / ${product.factoryColorNo || "-"}</strong></div>
     <div><span>缸號</span><strong>${product.vat || "-"}</strong></div>
     <div><span>工廠生產重量</span><strong>${number(product.factoryWeight)} KG</strong></div>
-    <div><span>產品數量</span><strong>${number(product.productQty)} 團</strong></div>
+    <div><span>打團重量(一團)</span><strong>${number(product.ballWeight)} g</strong></div>
+    <div><span>打團總數量</span><strong>${number(product.productQty)} 團</strong></div>
     <div><span>單包團數</span><strong>${number(product.packSize)} 團</strong></div>
     <div><span>產品包數</span><strong>${number(product.packageCount)} 包</strong></div>
   `;
@@ -1028,14 +1038,17 @@ function renderProducts() {
     <td>${product.count || "-"}</td>
     <td>${product.composition || "-"}</td>
     <td>${product.color || "-"}</td>
+    <td>${product.colorName || "-"}</td>
+    <td>${product.factoryColorNo || "-"}</td>
     <td>${product.vat || "-"}</td>
     <td>${number(product.factoryWeight)} KG</td>
+    <td>${number(product.ballWeight)} g</td>
     <td>${number(product.productQty)} 團</td>
     <td>${number(product.packSize)} 團</td>
     <td>${number(product.packageCount)} 包</td>
     <td class="num">${money(product.price)}</td>
     <td>${rowActions("product", product.id, true)}</td>
-  </tr>`).join("") || emptyRow(14);
+  </tr>`).join("") || emptyRow(17);
   $("#productRows").innerHTML = officeRows.map((product) => `<tr>
     <td>${product.sku}</td>
     <td>${product.name}</td>
@@ -1073,6 +1086,8 @@ function renderDocs(kind) {
     productSku: findProduct(doc.productId)?.sku || "",
     yarnNo: findProduct(doc.productId)?.yarnNo || "",
     color: findProduct(doc.productId)?.color || "",
+    colorName: findProduct(doc.productId)?.colorName || "",
+    factoryColorNo: findProduct(doc.productId)?.factoryColorNo || "",
     partnerName: findPartner(doc.partnerId)?.customerName || findPartner(doc.partnerId)?.name || "",
   }))).sort((a, b) => `${b.date}${b.no}`.localeCompare(`${a.date}${a.no}`));
   const tbody = kind === "purchase" ? $("#purchaseRows") : $("#saleRows");
@@ -1087,12 +1102,14 @@ function renderDocs(kind) {
     <td>${doc.productName || "-"}</td>
     <td>${doc.yarnNo || "-"}</td>
     <td>${doc.color || "-"}</td>
+    <td>${doc.colorName || "-"}</td>
+    <td>${doc.factoryColorNo || "-"}</td>
     <td>${doc.vat || "-"}</td>
     <td>${number(doc.qty)} 包</td>
     <td class="num">${money(doc.price)}</td>
     <td class="num">${money(Number(doc.qty) * Number(doc.price))}</td>
     <td>${rowActions(kind, doc.id)}</td>
-  </tr>`).join("") || emptyRow(13);
+  </tr>`).join("") || emptyRow(15);
 }
 
 function renderInventory() {
@@ -1107,14 +1124,17 @@ function renderInventory() {
       <td>${product.name}</td>
       <td>${product.yarnNo || "-"}</td>
       <td>${product.color || "-"}</td>
+      <td>${product.colorName || "-"}</td>
+      <td>${product.factoryColorNo || "-"}</td>
       <td>${number(product.factoryWeight)} KG</td>
+      <td>${number(product.ballWeight)} g</td>
       <td>${number(product.packageCount)} 包</td>
       <td>${number(stock)} 包</td>
       <td>${number(product.minStock)}</td>
       <td class="num">${money(stock * Number(product.cost))}</td>
       <td>${status}</td>
     </tr>`;
-  }).join("") || emptyRow(11);
+  }).join("") || emptyRow(14);
 }
 
 function invoiceLineSummary(lines = []) {
@@ -2318,8 +2338,11 @@ function resetForm(form) {
 function updatePackageCount() {
   const form = $("#sellProductForm");
   if (!form) return;
-  const qty = Number(form.elements.productQty.value || 0);
+  const factoryWeight = Number(form.elements.factoryWeight.value || 0);
+  const ballWeight = Number(form.elements.ballWeight.value || 0);
+  const qty = ballQtyFromWeight(factoryWeight, ballWeight);
   const packSize = Number(form.elements.packSize.value || 0);
+  form.elements.productQty.value = qty;
   form.elements.packageCount.value = packSize > 0 ? ceilNumber(qty / packSize) : 0;
 }
 
@@ -2529,7 +2552,9 @@ function upsertSellProduct(form) {
   const data = Object.fromEntries(new FormData(form));
   const existing = data.id ? state.products.find((item) => item.id === data.id) : null;
   if (data.id && !existing) return toast("找不到原商品，請重新選擇後再修改");
-  const productQty = Number(data.productQty || 0);
+  const factoryWeight = Number(data.factoryWeight || 0);
+  const ballWeight = Number(data.ballWeight || 0);
+  const productQty = ballQtyFromWeight(factoryWeight, ballWeight);
   const packSize = Math.max(1, Number(data.packSize || 1));
   const payload = {
     ...(existing || {}),
@@ -2541,12 +2566,15 @@ function upsertSellProduct(form) {
     composition: data.composition.trim(),
     name: data.name.trim(),
     color: data.color.trim(),
+    colorName: (data.colorName || "").trim(),
+    factoryColorNo: (data.factoryColorNo || "").trim(),
     vat: data.vat.trim(),
-    factoryWeight: Number(data.factoryWeight || 0),
+    factoryWeight,
+    ballWeight,
     productQty,
     packSize,
     packageCount: ceilNumber(productQty / packSize),
-    initialQty: productQty,
+    initialQty: ceilNumber(productQty / packSize),
     unit: "包",
     cost: Number(data.cost || 0),
     price: Number(data.price),
@@ -3201,6 +3229,7 @@ function editItem(type, id) {
     const product = state.products.find((item) => item.id === id);
     setProductTab(product?.type === "sale" ? "saleGoods" : "officeGoods");
     fillForm(product?.type === "sale" ? $("#sellProductForm") : $("#productForm"), product);
+    if (product?.type === "sale") updatePackageCount();
     setView("products");
   }
   if (type === "partner") {
@@ -3280,6 +3309,8 @@ function docRows(kind) {
       product?.sku || "",
       product?.yarnNo || "",
       product?.color || "",
+      product?.colorName || "",
+      product?.factoryColorNo || "",
       doc.vat || "",
       `${number(doc.qty)} 包`,
       money(doc.price),
@@ -3335,16 +3366,16 @@ function reportContent(view) {
     return {
       title: titles[view],
       body: productTab === "saleGoods"
-        ? reportTable(["編號", "品名", "紗號", "支數", "成分", "色號", "缸號", "工廠生產重量", "產品數量", "單包團數", "產品包數", "售價"], rows.map((p) => [p.sku, p.name, p.yarnNo, p.count, p.composition, p.color, p.vat, `${number(p.factoryWeight)} KG`, `${number(p.productQty)} 團`, `${number(p.packSize)} 團`, `${number(p.packageCount)} 包`, money(p.price)]))
+        ? reportTable(["編號", "品名", "紗號", "支數", "成分", "色號", "色名", "工廠色號", "缸號", "工廠生產重量", "打團重量(一團)", "打團總數量", "單包團數", "產品包數", "售價"], rows.map((p) => [p.sku, p.name, p.yarnNo, p.count, p.composition, p.color, p.colorName, p.factoryColorNo, p.vat, `${number(p.factoryWeight)} KG`, `${number(p.ballWeight)} g`, `${number(p.productQty)} 團`, `${number(p.packSize)} 團`, `${number(p.packageCount)} 包`, money(p.price)]))
         : reportTable(["品號", "品名", "分類", "單位", "進價", "售價", "安全庫存"], rows.map((p) => [p.sku, p.name, p.category, p.unit, money(p.cost), money(p.price), number(p.minStock)])),
     };
   }
 
   const reports = {
     partners: () => reportTable(["工廠類別", "合作商類別", "客戶名稱", "公司名稱", "聯絡人", "電話", "E-MAIL", "會計師", "老闆", "國籍"], state.partners.map((p) => [p.factoryType, p.partnerType, p.customerName, p.name, p.contact, p.phone, p.email, p.accountant, p.owner, p.nationality])),
-    purchases: () => reportTable(["單號", "日期", "工廠單位", "銷售產品", "產品編號", "紗號", "色號", "缸號", "包數", "單包進價", "金額"], docRows("purchase")),
-    sales: () => reportTable(["單號", "日期", "國內合作商", "銷售產品", "產品編號", "紗號", "色號", "缸號", "包數", "單包售價", "金額"], docRows("sale")),
-    inventory: () => reportTable(["編號", "銷售產品", "紗號", "色號", "現有庫存", "安全量", "庫存成本"], saleProducts.map((p) => [p.sku, p.name, p.yarnNo, p.color, `${number(productStock(p.id))} 包`, number(p.minStock), money(productStock(p.id) * Number(p.cost))])),
+    purchases: () => reportTable(["單號", "日期", "工廠單位", "銷售產品", "產品編號", "紗號", "色號", "色名", "工廠色號", "缸號", "包數", "單包進價", "金額"], docRows("purchase")),
+    sales: () => reportTable(["單號", "日期", "國內合作商", "銷售產品", "產品編號", "紗號", "色號", "色名", "工廠色號", "缸號", "包數", "單包售價", "金額"], docRows("sale")),
+    inventory: () => reportTable(["編號", "銷售產品", "紗號", "色號", "色名", "工廠色號", "工廠生產重量", "打團重量(一團)", "產品包數", "現有庫存", "安全量", "庫存成本"], saleProducts.map((p) => [p.sku, p.name, p.yarnNo, p.color, p.colorName, p.factoryColorNo, `${number(p.factoryWeight)} KG`, `${number(p.ballWeight)} g`, `${number(p.packageCount)} 包`, `${number(productStock(p.id))} 包`, number(p.minStock), money(productStock(p.id) * Number(p.cost))])),
     tracking: () => reportTable(["追蹤編號", "品名", "紗號", "色號", "缸號", "數量", "進度", "預計完成", "備註"], (state.yarnTracks || []).map((p) => [p.code, p.name, p.yarnNo, p.color, p.vat, `${number(p.qty)} ${p.unit || ""}`, p.status, p.dueDate, p.note])),
     production: () => reportTable(["追蹤編號", "品名", "目前進度", "預計完成", "剩餘天數", "風險"], (state.yarnTracks || []).map((p) => [p.code, p.name, p.status, p.dueDate, daysLeft(p.dueDate) === "" ? "" : `${daysLeft(p.dueDate)} 天`, p.status === "已完成" ? "完成" : daysLeft(p.dueDate) < 0 ? "逾期" : "正常"])),
     live: () => reportTable(["場次", "日期", "時段", "主播", "主推品", "紗號", "目標GMV", "狀態"], (state.liveShows || []).map((p) => [p.code, p.date, p.time, p.host, p.productName, p.yarnNo, money(p.targetGmv), p.status])),
@@ -3549,7 +3580,8 @@ function bindEvents() {
     event.preventDefault();
     addAnnouncement(event.currentTarget);
   });
-  $("#sellProductForm").elements.productQty.addEventListener("input", updatePackageCount);
+  $("#sellProductForm").elements.factoryWeight.addEventListener("input", updatePackageCount);
+  $("#sellProductForm").elements.ballWeight.addEventListener("input", updatePackageCount);
   $("#sellProductForm").elements.packSize.addEventListener("input", updatePackageCount);
   $("#productImageInput").addEventListener("change", handleProductImage);
   $("#staffAvatarInput").addEventListener("change", (event) => handleImageUpload(event, "staffForm", "staffAvatarPreview", "avatarData"));

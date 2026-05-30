@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OA 進銷存系統</title>
-    <link rel="stylesheet" href="styles.css?v=20260507-04" />
+    <link rel="stylesheet" href="styles.css?v=20260530-01" />
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -216,13 +216,20 @@
             <label>成分<input name="composition" placeholder="100% 羊絨" /></label>
             <label>品名<input required name="name" placeholder="雲錦羊絨" /></label>
             <label>色號<input name="color" placeholder="米杏 103" /></label>
+            <div class="two-col">
+              <label>色名<input name="colorName" placeholder="米杏" /></label>
+              <label>工廠色號<input name="factoryColorNo" placeholder="103" /></label>
+            </div>
             <label>缸號<input name="vat" placeholder="A260501" /></label>
             <div class="two-col">
               <label>工廠生產重量<span class="unit-field"><input required name="factoryWeight" type="number" min="0" step="0.1" /><b>KG</b></span></label>
-              <label>產品數量<span class="unit-field"><input required name="productQty" type="number" min="0" step="1" /><b>團</b></span></label>
+              <label>打團重量(一團)<span class="unit-field"><input required name="ballWeight" type="number" min="0.1" step="0.1" /><b>g</b></span></label>
             </div>
             <div class="two-col">
+              <label>打團總數量<span class="unit-field"><input readonly name="productQty" type="number" min="0" step="1" /><b>團</b></span></label>
               <label>單包團數<span class="unit-field"><input required name="packSize" type="number" min="1" step="1" /><b>團</b></span></label>
+            </div>
+            <div class="two-col">
               <label>產品包數<span class="unit-field"><input readonly name="packageCount" type="number" min="0" step="1" /><b>包</b></span></label>
             </div>
             <div class="two-col">
@@ -257,7 +264,7 @@
             <div class="panel-head"><h2 id="productListTitle">銷售產品清單</h2><span id="productCount" class="pill">0 筆</span></div>
             <div class="table-wrap product-list active" data-product-panel="saleGoods">
               <table>
-                <thead><tr><th>圖片</th><th>編號</th><th>品名</th><th>紗號</th><th>支數</th><th>成分</th><th>色號</th><th>缸號</th><th>工廠生產重量</th><th>產品數量</th><th>單包團數</th><th>產品包數</th><th>售價</th><th></th></tr></thead>
+                <thead><tr><th>圖片</th><th>編號</th><th>品名</th><th>紗號</th><th>支數</th><th>成分</th><th>色號</th><th>色名</th><th>工廠色號</th><th>缸號</th><th>工廠生產重量</th><th>打團重量(一團)</th><th>打團總數量</th><th>單包團數</th><th>產品包數</th><th>售價</th><th></th></tr></thead>
                 <tbody id="sellProductRows"></tbody>
               </table>
             </div>
@@ -340,7 +347,7 @@
             <div class="panel-head"><h2>進貨紀錄</h2><span id="purchaseCount" class="pill">0 筆</span></div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>圖片</th><th>單號</th><th>日期</th><th>工廠單位</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>缸號</th><th>進貨包數</th><th>單包進價</th><th>金額</th><th></th></tr></thead>
+                <thead><tr><th>圖片</th><th>單號</th><th>日期</th><th>工廠單位</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>色名</th><th>工廠色號</th><th>缸號</th><th>進貨包數</th><th>單包進價</th><th>金額</th><th></th></tr></thead>
                 <tbody id="purchaseRows"></tbody>
               </table>
             </div>
@@ -377,7 +384,7 @@
             <div class="panel-head"><h2>銷貨紀錄</h2><span id="saleCount" class="pill">0 筆</span></div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>圖片</th><th>單號</th><th>日期</th><th>國內合作商</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>缸號</th><th>銷貨包數</th><th>單包售價</th><th>金額</th><th></th></tr></thead>
+                <thead><tr><th>圖片</th><th>單號</th><th>日期</th><th>國內合作商</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>色名</th><th>工廠色號</th><th>缸號</th><th>銷貨包數</th><th>單包售價</th><th>金額</th><th></th></tr></thead>
                 <tbody id="saleRows"></tbody>
               </table>
             </div>
@@ -403,7 +410,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>圖片</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>工廠生產重量</th><th>產品包數</th><th>現有庫存</th><th>安全量</th><th>庫存成本</th><th>狀態</th></tr></thead>
+              <thead><tr><th>圖片</th><th>產品編號</th><th>銷售產品</th><th>紗號</th><th>色號</th><th>色名</th><th>工廠色號</th><th>工廠生產重量</th><th>打團重量(一團)</th><th>產品包數</th><th>現有庫存</th><th>安全量</th><th>庫存成本</th><th>狀態</th></tr></thead>
               <tbody id="inventoryRows"></tbody>
             </table>
           </div>
@@ -1165,6 +1172,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260507-04"></script>
+    <script src="app.js?v=20260530-01"></script>
   </body>
 </html>
