@@ -119,20 +119,24 @@ function loadState() {
 async function loadCloudState() {
   try {
     const response = await fetch("/api/state", { cache: "no-store" });
-    if (!response.ok) return;
+    if (!response.ok) throw new Error("cloud_state_unavailable");
     const cloudState = await response.json();
-    const localState = normalizeState(loadState());
-    if (!isMeaningfulState(cloudState) && isMeaningfulState(localState)) {
-      state = localState;
-      saveState();
-      return;
-    }
     if (isMeaningfulState(cloudState)) {
       state = normalizeState(cloudState);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      return;
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const localState = normalizeState(loadState());
+    if (isMeaningfulState(localState)) {
+      state = localState;
+      toast("目前使用本機暫存資料，尚未同步到伺服器");
+    }
   } catch {
-    // Offline/local-file fallback keeps using localStorage.
+    const localState = normalizeState(loadState());
+    if (isMeaningfulState(localState)) {
+      state = localState;
+      toast("無法連線伺服器，目前使用本機暫存資料");
+    }
   }
 }
 
@@ -431,11 +435,16 @@ function syncUserAccountFromStaff(staff, previousPhone = "", password = "") {
 function saveState() {
   state.meta = { ...(state.meta || {}), updatedAt: Date.now() };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  fetch("/api/state", {
+  return fetch("/api/state", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(state),
-  }).catch(() => {});
+  }).then((response) => {
+    if (!response.ok) throw new Error("save_failed");
+    return response.json();
+  }).catch(() => {
+    toast("儲存失敗，資料尚未同步到伺服器");
+  });
 }
 
 function applyAppearanceSettings() {
