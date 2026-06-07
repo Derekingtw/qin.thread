@@ -463,9 +463,110 @@ async function authenticateUser(phone, password) {
     String(item.password || "") === String(password || "")
   ));
   if (!user) return null;
-  const staff = (Array.isArray(state.staff) ? state.staff : []).find((item) => item.id === user.staffId || normalizePhone(item.phone) === normalizedPhone) || null;
+  const staffRows = Array.isArray(state.staff) ? state.staff : [];
+  const staff = staffRows.find((item) => item.id === user.staffId) || staffRows.find((item) => normalizePhone(item.phone) === normalizedPhone) || null;
   const { password: _password, ...safeUser } = user;
   return { user: safeUser, staff };
+}
+
+async function recreateAccountDirect({ phone, name = "白毛", systemRole = "核心人員" }) {
+  if (!pool) {
+    const error = new Error("postgres_unavailable");
+    error.statusCode = 503;
+    throw error;
+  }
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) {
+    const error = new Error("phone_required");
+    error.statusCode = 400;
+    throw error;
+  }
+  const currentState = await getStateFromDatabase();
+  if (!currentState) {
+    const error = new Error("state_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  await backupDatabaseState("before_recreate_account");
+  const users = Array.isArray(currentState.settings?.users) ? currentState.settings.users : [];
+  const oldUsers = users.filter((user) => normalizePhone(user.phone || user.username) === normalizedPhone);
+  const oldStaffIds = new Set(oldUsers.map((user) => user.staffId).filter(Boolean));
+  const staffRows = Array.isArray(currentState.staff) ? currentState.staff : [];
+  const oldStaff = staffRows.filter((staff) => normalizePhone(staff.phone) === normalizedPhone || oldStaffIds.has(staff.id));
+  const deletedAt = Date.now();
+  const deletedItems = Array.isArray(currentState.meta?.deletedItems) ? currentState.meta.deletedItems : [];
+  const nextState = {
+    ...currentState,
+    settings: {
+      ...(currentState.settings || {}),
+      users: users.filter((user) => normalizePhone(user.phone || user.username) !== normalizedPhone),
+    },
+    staff: staffRows.filter((staff) => normalizePhone(staff.phone) !== normalizedPhone && !oldStaffIds.has(staff.id)),
+    growthRecords: (Array.isArray(currentState.growthRecords) ? currentState.growthRecords : []).filter((record) => !oldStaffIds.has(record.staffId)),
+    meta: {
+      ...(currentState.meta || {}),
+      deletedItems: [
+        ...deletedItems,
+        ...oldUsers.map((user) => ({ collection: "settings.users", key: itemKey(user, 0), deletedAt })),
+        ...oldStaff.map((staff) => ({ collection: "staff", key: itemKey(staff, 0), deletedAt })),
+      ],
+      updatedAt: Date.now(),
+      recreatedAccountAt: Date.now(),
+    },
+  };
+  const maxSeq = nextState.staff
+    .map((staff) => Number(String(staff.code || "").replace(/\D/g, "")))
+    .filter(Number.isFinite)
+    .reduce((max, seq) => Math.max(max, seq), 0);
+  const staffId = `stf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const userId = `usr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const staff = {
+    id: staffId,
+    code: `P${String(maxSeq + 1).padStart(3, "0")}`,
+    name,
+    gender: "",
+    dept: "待補資料",
+    title: "待補資料",
+    role: systemRole,
+    phone: normalizedPhone,
+    joinDate: new Date().toISOString().slice(0, 10),
+    status: "在職",
+    employeeType: "regular",
+    regularNote: "帳號根除後重建",
+    note: "",
+  };
+  const permissions = [
+    "dashboard", "products", "partners", "inventory", "purchases", "sales", "qinLiveSales", "shipping", "invoices",
+    "tracking", "production", "contracts", "liveSales", "live", "knitters", "staff", "leave", "approvals",
+    "payroll", "intl", "growth",
+  ];
+  const user = {
+    id: userId,
+    name,
+    username: normalizedPhone,
+    phone: normalizedPhone,
+    password: normalizedPhone,
+    role: "user",
+    systemRole,
+    staffId,
+    permissions,
+  };
+  nextState.staff.push(staff);
+  nextState.settings.users.push(user);
+  await pool.query(`
+    insert into app_state (id, state)
+    values ($1, $2::jsonb)
+    on conflict (id)
+    do update set state = excluded.state, updated_at = now()
+  `, ["main", JSON.stringify(nextState)]);
+  return {
+    removedUsers: oldUsers.length,
+    removedStaff: oldStaff.length,
+    user: { ...user, password: undefined },
+    staff,
+    users: nextState.settings.users.length,
+    staffCount: nextState.staff.length,
+  };
 }
 
 async function jsonResponse(res, status, data) {
@@ -555,6 +656,19 @@ async function start() {
         await jsonResponse(res, 200, { ok: true, ...(await removeSaveCheckProducts()) });
       } catch (error) {
         await jsonResponse(res, error.statusCode || 500, { ok: false, reason: error.message || "cleanup_failed" });
+      }
+      return;
+    }
+    if (url.pathname === "/api/admin/recreate-account" && req.method === "POST") {
+      if (!process.env.ADMIN_RESTORE_TOKEN || req.headers["x-admin-token"] !== process.env.ADMIN_RESTORE_TOKEN) {
+        await jsonResponse(res, 403, { ok: false, reason: "forbidden" });
+        return;
+      }
+      try {
+        const body = JSON.parse(await readBody(req));
+        await jsonResponse(res, 200, { ok: true, ...(await recreateAccountDirect(body)) });
+      } catch (error) {
+        await jsonResponse(res, error.statusCode || 500, { ok: false, reason: error.message || "recreate_failed" });
       }
       return;
     }
