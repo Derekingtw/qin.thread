@@ -116,6 +116,15 @@ function loadState() {
   }
 }
 
+function cacheLocalState(nextState) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function loadCloudState() {
   try {
     const response = await fetch("/api/state", { cache: "no-store" });
@@ -123,7 +132,7 @@ async function loadCloudState() {
     const cloudState = await response.json();
     if (isMeaningfulState(cloudState)) {
       state = normalizeState(cloudState);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (!cacheLocalState(state)) toast("伺服器資料已載入，本機暫存空間不足");
       return;
     }
     const localState = normalizeState(loadState());
@@ -435,7 +444,7 @@ function syncUserAccountFromStaff(staff, previousPhone = "", password = "") {
 
 async function saveState() {
   state.meta = { ...(state.meta || {}), updatedAt: Date.now() };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  cacheLocalState(state);
   try {
     const response = await fetch("/api/state", {
       method: "POST",
@@ -558,7 +567,7 @@ async function loginWithServer(phone, password) {
     if (result.staff && !(state.staff || []).some((item) => item.id === result.staff.id)) {
       state.staff = [...(state.staff || []), result.staff];
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    cacheLocalState(state);
   }
   return user;
 }

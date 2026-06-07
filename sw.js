@@ -1,9 +1,9 @@
-const CACHE_VERSION = "qin-thread-pwa-v20260607-04";
+const CACHE_VERSION = "qin-thread-pwa-v20260607-05";
 const CORE_ASSETS = [
   "/",
   "/index.html",
-  "/styles.css?v=20260607-04",
-  "/app.js?v=20260607-04",
+  "/styles.css?v=20260607-05",
+  "/app.js?v=20260607-05",
   "/manifest.webmanifest",
   "/assets/qinxian-logo.svg",
 ];
