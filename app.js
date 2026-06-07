@@ -432,19 +432,31 @@ function syncUserAccountFromStaff(staff, previousPhone = "", password = "") {
   }
 }
 
-function saveState() {
+async function saveState() {
   state.meta = { ...(state.meta || {}), updatedAt: Date.now() };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  return fetch("/api/state", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(state),
-  }).then((response) => {
-    if (!response.ok) throw new Error("save_failed");
-    return response.json();
-  }).catch(() => {
+  try {
+    const response = await fetch("/api/state", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(state),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (response.status === 409 || result.reason === "refuse_possible_data_loss") {
+        toast("伺服器資料較新，已阻止覆蓋，正在重新載入");
+        await loadCloudState();
+        renderAll();
+        applyPermissions();
+        return { ok: false, conflict: true };
+      }
+      throw new Error(result.reason || "save_failed");
+    }
+    return result;
+  } catch {
     toast("儲存失敗，資料尚未同步到伺服器");
-  });
+    return { ok: false };
+  }
 }
 
 function applyAppearanceSettings() {
