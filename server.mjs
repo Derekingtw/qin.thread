@@ -152,7 +152,20 @@ function shouldRefuseOverwrite(currentState, nextState) {
     const value = path.reduce((next, key) => next?.[key], data);
     return Array.isArray(value) ? value.length : 0;
   };
+  const keysAt = (data, path) => {
+    const value = path.reduce((next, key) => next?.[key], data);
+    if (!Array.isArray(value)) return new Set();
+    return new Set(value.map((item, index) => itemKey(item, index)));
+  };
   if (protectedPaths.some((path) => countAt(nextState, path) < countAt(currentState, path))) return true;
+  if (protectedPaths.some((path) => {
+    const currentKeys = keysAt(currentState, path);
+    const nextKeys = keysAt(nextState, path);
+    for (const key of currentKeys) {
+      if (!nextKeys.has(key)) return true;
+    }
+    return false;
+  })) return true;
   return currentCount - nextCount >= 3;
 }
 
