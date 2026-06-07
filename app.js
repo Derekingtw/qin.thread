@@ -116,12 +116,33 @@ function loadState() {
   }
 }
 
+function slimLocalCacheState(sourceState) {
+  const copy = JSON.parse(JSON.stringify(sourceState || defaultState()));
+  copy.products = (copy.products || []).map((item) => ({ ...item, imageData: "" }));
+  copy.invoiceUploads = (copy.invoiceUploads || []).map((item) => ({ ...item, fileData: "" }));
+  copy.samples = (copy.samples || []).map((item) => ({ ...item, imageData: "" }));
+  copy.yarnShipments = (copy.yarnShipments || []).map((item) => ({ ...item, imageData: "" }));
+  copy.staff = (copy.staff || []).map((item) => ({ ...item, avatarData: "" }));
+  copy.settings = copy.settings || {};
+  copy.settings.appearance = {
+    ...(copy.settings.appearance || {}),
+    backgroundImage: "",
+  };
+  copy.meta = { ...(copy.meta || {}), localCachePartial: true };
+  return copy;
+}
+
 function cacheLocalState(nextState) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
     return true;
   } catch {
-    return false;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(slimLocalCacheState(nextState)));
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -132,7 +153,7 @@ async function loadCloudState() {
     const cloudState = await response.json();
     if (isMeaningfulState(cloudState)) {
       state = normalizeState(cloudState);
-      if (!cacheLocalState(state)) toast("伺服器資料已載入，本機暫存空間不足");
+      cacheLocalState(state);
       return;
     }
     const localState = normalizeState(loadState());
