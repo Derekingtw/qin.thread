@@ -450,6 +450,24 @@ async function saveAppState(nextState) {
   return { merged: false };
 }
 
+function normalizePhone(value) {
+  return String(value || "").replace(/[^\d+]/g, "").trim();
+}
+
+async function authenticateUser(phone, password) {
+  const state = await getAppState();
+  const normalizedPhone = normalizePhone(phone);
+  const users = Array.isArray(state.settings?.users) ? state.settings.users : [];
+  const user = users.find((item) => (
+    normalizePhone(item.phone || item.username) === normalizedPhone &&
+    String(item.password || "") === String(password || "")
+  ));
+  if (!user) return null;
+  const staff = (Array.isArray(state.staff) ? state.staff : []).find((item) => item.id === user.staffId || normalizePhone(item.phone) === normalizedPhone) || null;
+  const { password: _password, ...safeUser } = user;
+  return { user: safeUser, staff };
+}
+
 async function jsonResponse(res, status, data) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
   res.end(JSON.stringify(data));
@@ -491,6 +509,21 @@ async function start() {
       } catch (error) {
         console.error("GET /api/state-summary failed:", error.message);
         await jsonResponse(res, 500, { ok: false, error: "state_summary_failed" });
+      }
+      return;
+    }
+    if (url.pathname === "/api/login" && req.method === "POST") {
+      try {
+        const body = JSON.parse(await readBody(req));
+        const auth = await authenticateUser(body.phone || body.username, body.password);
+        if (!auth) {
+          await jsonResponse(res, 401, { ok: false, reason: "invalid_credentials" });
+          return;
+        }
+        await jsonResponse(res, 200, { ok: true, ...auth });
+      } catch (error) {
+        console.error("POST /api/login failed:", error.message);
+        await jsonResponse(res, 400, { ok: false, reason: "login_failed" });
       }
       return;
     }

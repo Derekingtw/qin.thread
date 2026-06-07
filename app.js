@@ -536,16 +536,44 @@ function registerUser(form) {
   applyPermissions();
 }
 
-function loginUser(form) {
+async function loginWithServer(phone, password) {
+  const response = await fetch("/api/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ phone, password }),
+  });
+  if (!response.ok) return null;
+  const result = await response.json();
+  if (!result.ok || !result.user) return null;
+  await loadCloudState();
+  let user = state.settings.users.find((item) => normalizePhone(item.phone || item.username) === phone && item.password === password);
+  if (!user) {
+    user = {
+      ...result.user,
+      phone: normalizePhone(result.user.phone || result.user.username || phone),
+      username: normalizePhone(result.user.phone || result.user.username || phone),
+      password,
+    };
+    state.settings.users = [...(state.settings.users || []), user];
+    if (result.staff && !(state.staff || []).some((item) => item.id === result.staff.id)) {
+      state.staff = [...(state.staff || []), result.staff];
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+  return user;
+}
+
+async function loginUser(form) {
   const data = Object.fromEntries(new FormData(form));
   const phone = normalizePhone(data.phone || data.username);
   if (!phone) return toast("請輸入手機號");
-  const user = state.settings.users.find((item) => normalizePhone(item.phone || item.username) === phone && item.password === data.password);
+  let user = state.settings.users.find((item) => normalizePhone(item.phone || item.username) === phone && item.password === data.password);
+  if (!user) user = await loginWithServer(phone, data.password);
   if (!user) return toast("手機號或密碼錯誤");
   user.phone = normalizePhone(user.phone || user.username);
   user.username = user.phone;
   user.staffId = user.staffId || ensureStaffForUser(user);
-  saveState();
+  await saveState();
   saveSession(user.phone);
   form.reset();
   toast("登入成功");
