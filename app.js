@@ -172,6 +172,7 @@ function normalizeState(saved) {
   };
   next.meta = {
     updatedAt: Number(saved?.meta?.updatedAt || 0),
+    deletedItems: Array.isArray(saved?.meta?.deletedItems) ? saved.meta.deletedItems : [],
   };
   next.settings.users = (next.settings.users || []).map((user) => ({
     ...user,
@@ -702,12 +703,28 @@ function pruneUserAccountsForDeletedStaff(staffId, staffPhone = "") {
   state.settings.users = users.filter((user) => {
     const sameStaff = staffId && user.staffId === staffId;
     const samePhone = phone && normalizePhone(user.phone || user.username || "") === phone;
+    if (sameStaff || samePhone) markDeletedItem("settings.users", user);
     return !sameStaff && !samePhone;
   });
   if (currentUser?.id && !state.settings.users.some((user) => user.id === currentUser.id)) {
     localStorage.removeItem(SESSION_KEY);
     currentUser = null;
   }
+}
+
+function deletedItemKey(item, fallback = "") {
+  return String(item?.id || item?.sku || item?.no || item?.phone || item?.username || fallback);
+}
+
+function markDeletedItem(collection, item) {
+  const key = deletedItemKey(item);
+  if (!collection || !key) return;
+  const deletedItems = Array.isArray(state.meta?.deletedItems) ? state.meta.deletedItems : [];
+  const exists = deletedItems.some((entry) => entry.collection === collection && entry.key === key);
+  state.meta = {
+    ...(state.meta || {}),
+    deletedItems: exists ? deletedItems : [...deletedItems, { collection, key, deletedAt: Date.now() }],
+  };
 }
 
 function avatarMarkup(staff, size = "md") {
@@ -2860,13 +2877,17 @@ function deleteItem(type, id) {
       : false;
   if (hasDoc) return toast("已有單據使用，請保留資料");
   const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", qinLiveSale: "qinLiveSales", invoiceUpload: "invoiceUploads", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", yarnShipment: "yarnShipments", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs", growthRecord: "growthRecords" };
+  const collection = map[type];
+  if (!collection || !Array.isArray(state[collection])) return;
+  const targetItem = state[collection].find((item) => item.id === id);
+  markDeletedItem(collection, targetItem || { id });
   if (type === "staff") {
     const staff = (state.staff || []).find((item) => item.id === id);
     pruneUserAccountsForDeletedStaff(id, staff?.phone);
     state.growthRecords = (state.growthRecords || []).filter((record) => record.staffId !== id);
     if (editingStaffId === id) editingStaffId = "";
   }
-  state[map[type]] = state[map[type]].filter((item) => item.id !== id);
+  state[collection] = state[collection].filter((item) => item.id !== id);
   if (type === "tradeDoc" && activeTradeDocId === id) activeTradeDocId = "";
   saveState();
   toast(type === "staff" ? "人事資料與系統權限已刪除" : "資料已刪除");

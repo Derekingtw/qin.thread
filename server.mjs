@@ -156,17 +156,29 @@ function shouldRefuseOverwrite(currentState, nextState) {
   return currentCount - nextCount >= 3;
 }
 
-function mergeArrayById(currentItems = [], nextItems = []) {
+function deletionSetFor(nextState, collection) {
+  const deletedItems = Array.isArray(nextState?.meta?.deletedItems) ? nextState.meta.deletedItems : [];
+  return new Set(deletedItems
+    .filter((entry) => entry?.collection === collection && entry?.key)
+    .map((entry) => String(entry.key)));
+}
+
+function itemKey(item, index) {
+  return String(item?.id || item?.sku || item?.no || item?.phone || item?.username || `row-${index}`);
+}
+
+function mergeArrayById(currentItems = [], nextItems = [], deletedKeys = new Set()) {
   const merged = [];
   const seen = new Set();
-  const keyFor = (item, index) => String(item?.id || item?.sku || item?.no || item?.phone || item?.username || `row-${index}`);
   nextItems.forEach((item, index) => {
-    const key = keyFor(item, index);
+    const key = itemKey(item, index);
+    if (deletedKeys.has(key)) return;
     seen.add(key);
     merged.push(item);
   });
   currentItems.forEach((item, index) => {
-    const key = keyFor(item, index);
+    const key = itemKey(item, index);
+    if (deletedKeys.has(key)) return;
     if (!seen.has(key)) merged.push(item);
   });
   return merged;
@@ -178,12 +190,14 @@ function mergeWithoutDataLoss(currentState, nextState) {
   for (const key of stateArrayKeys) {
     const currentItems = Array.isArray(currentState[key]) ? currentState[key] : [];
     const nextItems = Array.isArray(nextState[key]) ? nextState[key] : [];
-    merged[key] = nextItems.length < currentItems.length ? mergeArrayById(currentItems, nextItems) : nextItems;
+    const deletedKeys = deletionSetFor(nextState, key);
+    merged[key] = nextItems.length < currentItems.length || deletedKeys.size ? mergeArrayById(currentItems, nextItems, deletedKeys) : nextItems;
   }
   merged.settings = { ...(currentState.settings || {}), ...(nextState.settings || {}) };
   const currentUsers = Array.isArray(currentState.settings?.users) ? currentState.settings.users : [];
   const nextUsers = Array.isArray(nextState.settings?.users) ? nextState.settings.users : [];
-  merged.settings.users = nextUsers.length < currentUsers.length ? mergeArrayById(currentUsers, nextUsers) : nextUsers;
+  const deletedUsers = deletionSetFor(nextState, "settings.users");
+  merged.settings.users = nextUsers.length < currentUsers.length || deletedUsers.size ? mergeArrayById(currentUsers, nextUsers, deletedUsers) : nextUsers;
   merged.meta = { ...(currentState.meta || {}), ...(nextState.meta || {}), mergedAt: Date.now() };
   return merged;
 }
@@ -287,7 +301,8 @@ async function saveStateToDatabase(nextState) {
   const currentState = await getStateFromDatabase();
   if (shouldRefuseOverwrite(currentState, nextState)) {
     const mergedState = mergeWithoutDataLoss(currentState, nextState);
-    if (shouldRefuseOverwrite(currentState, mergedState)) {
+    const hasExplicitDeletes = Array.isArray(nextState?.meta?.deletedItems) && nextState.meta.deletedItems.length > 0;
+    if (!hasExplicitDeletes && shouldRefuseOverwrite(currentState, mergedState)) {
       const error = new Error("refuse_possible_data_loss");
       error.statusCode = 409;
       throw error;
