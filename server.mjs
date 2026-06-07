@@ -343,6 +343,32 @@ async function restoreLargestDatabaseBackup() {
   return { backupId: backup.backup_id, state: backup.state };
 }
 
+async function removeSaveCheckProducts() {
+  if (!pool) {
+    const error = new Error("postgres_unavailable");
+    error.statusCode = 503;
+    throw error;
+  }
+  const currentState = await getStateFromDatabase();
+  if (!currentState) return { removed: 0, products: 0 };
+  const products = Array.isArray(currentState.products) ? currentState.products : [];
+  const nextProducts = products.filter((product) => (
+    product?.sku !== "TEST-SAVE-CHECK" &&
+    !String(product?.name || "").includes("儲存測試")
+  ));
+  const removed = products.length - nextProducts.length;
+  if (!removed) return { removed: 0, products: products.length };
+  await backupDatabaseState("before_remove_save_check_product");
+  const nextState = { ...currentState, products: nextProducts, meta: { ...(currentState.meta || {}), cleanedAt: Date.now() } };
+  await pool.query(`
+    insert into app_state (id, state)
+    values ($1, $2::jsonb)
+    on conflict (id)
+    do update set state = excluded.state, updated_at = now()
+  `, ["main", JSON.stringify(nextState)]);
+  return { removed, products: nextProducts.length };
+}
+
 async function getStateFromJsonFallback() {
   const state = await readJsonIfExists(stateFile);
   if (hasMeaningfulState(state)) return state;
@@ -456,6 +482,18 @@ async function start() {
         });
       } catch (error) {
         await jsonResponse(res, error.statusCode || 500, { ok: false, reason: error.message || "restore_failed" });
+      }
+      return;
+    }
+    if (url.pathname === "/api/admin/remove-save-check-products" && req.method === "POST") {
+      if (!process.env.ADMIN_RESTORE_TOKEN || req.headers["x-admin-token"] !== process.env.ADMIN_RESTORE_TOKEN) {
+        await jsonResponse(res, 403, { ok: false, reason: "forbidden" });
+        return;
+      }
+      try {
+        await jsonResponse(res, 200, { ok: true, ...(await removeSaveCheckProducts()) });
+      } catch (error) {
+        await jsonResponse(res, error.statusCode || 500, { ok: false, reason: error.message || "cleanup_failed" });
       }
       return;
     }
