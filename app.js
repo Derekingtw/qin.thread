@@ -452,6 +452,12 @@ async function saveState() {
       }
       throw new Error(result.reason || "save_failed");
     }
+    if (result.merged) {
+      await loadCloudState();
+      renderAll();
+      applyPermissions();
+      toast("已保留伺服器資料並完成合併");
+    }
     return result;
   } catch {
     toast("儲存失敗，資料尚未同步到伺服器");

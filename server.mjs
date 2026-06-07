@@ -100,6 +100,40 @@ function recordCount(data) {
   ].reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
 }
 
+const stateArrayKeys = [
+  "products",
+  "partners",
+  "purchases",
+  "sales",
+  "qinLiveSales",
+  "invoiceUploads",
+  "yarnTracks",
+  "liveShows",
+  "liveSales",
+  "shipments",
+  "staff",
+  "leaveRequests",
+  "announcements",
+  "knitters",
+  "samples",
+  "yarnShipments",
+  "tripRequests",
+  "purchaseRequests",
+  "proposalRequests",
+  "adminPayrolls",
+  "livePayrolls",
+  "partnerBonuses",
+  "tradeDocs",
+  "growthRecords",
+];
+
+function arrayCounts(data) {
+  const counts = {};
+  for (const key of stateArrayKeys) counts[key] = Array.isArray(data?.[key]) ? data[key].length : 0;
+  counts.users = Array.isArray(data?.settings?.users) ? data.settings.users.length : 0;
+  return counts;
+}
+
 function hasMeaningfulState(data) {
   return recordCount(data) > 0;
 }
@@ -120,6 +154,62 @@ function shouldRefuseOverwrite(currentState, nextState) {
   };
   if (protectedPaths.some((path) => countAt(nextState, path) < countAt(currentState, path))) return true;
   return currentCount - nextCount >= 3;
+}
+
+function mergeArrayById(currentItems = [], nextItems = []) {
+  const merged = [];
+  const seen = new Set();
+  const keyFor = (item, index) => String(item?.id || item?.sku || item?.no || item?.phone || item?.username || `row-${index}`);
+  nextItems.forEach((item, index) => {
+    const key = keyFor(item, index);
+    seen.add(key);
+    merged.push(item);
+  });
+  currentItems.forEach((item, index) => {
+    const key = keyFor(item, index);
+    if (!seen.has(key)) merged.push(item);
+  });
+  return merged;
+}
+
+function mergeWithoutDataLoss(currentState, nextState) {
+  if (!currentState || !nextState) return nextState;
+  const merged = { ...currentState, ...nextState };
+  for (const key of stateArrayKeys) {
+    const currentItems = Array.isArray(currentState[key]) ? currentState[key] : [];
+    const nextItems = Array.isArray(nextState[key]) ? nextState[key] : [];
+    merged[key] = nextItems.length < currentItems.length ? mergeArrayById(currentItems, nextItems) : nextItems;
+  }
+  merged.settings = { ...(currentState.settings || {}), ...(nextState.settings || {}) };
+  const currentUsers = Array.isArray(currentState.settings?.users) ? currentState.settings.users : [];
+  const nextUsers = Array.isArray(nextState.settings?.users) ? nextState.settings.users : [];
+  merged.settings.users = nextUsers.length < currentUsers.length ? mergeArrayById(currentUsers, nextUsers) : nextUsers;
+  merged.meta = { ...(currentState.meta || {}), ...(nextState.meta || {}), mergedAt: Date.now() };
+  return merged;
+}
+
+async function getStateSummary() {
+  const currentState = await getAppState();
+  const backups = pool
+    ? (await pool.query(`
+        select backup_id, reason, created_at,
+          jsonb_array_length(coalesce(state->'products', '[]'::jsonb)) as products,
+          jsonb_array_length(coalesce(state->'staff', '[]'::jsonb)) as staff,
+          jsonb_array_length(coalesce(state->'settings'->'users', '[]'::jsonb)) as users
+        from app_state_backups
+        order by backup_id desc
+        limit 8
+      `)).rows
+    : [];
+  return {
+    ok: true,
+    storage: pool ? "postgres" : "json",
+    databaseConfigured: Boolean(databaseUrl),
+    updatedAt: currentState?.meta?.updatedAt || null,
+    counts: arrayCounts(currentState),
+    totalRecords: recordCount(currentState),
+    backups,
+  };
 }
 
 async function readJsonIfExists(filePath) {
@@ -196,9 +286,20 @@ async function saveStateToDatabase(nextState) {
   if (!pool) return false;
   const currentState = await getStateFromDatabase();
   if (shouldRefuseOverwrite(currentState, nextState)) {
-    const error = new Error("refuse_possible_data_loss");
-    error.statusCode = 409;
-    throw error;
+    const mergedState = mergeWithoutDataLoss(currentState, nextState);
+    if (shouldRefuseOverwrite(currentState, mergedState)) {
+      const error = new Error("refuse_possible_data_loss");
+      error.statusCode = 409;
+      throw error;
+    }
+    await backupDatabaseState("before_merge_save");
+    await pool.query(`
+      insert into app_state (id, state)
+      values ($1, $2::jsonb)
+      on conflict (id)
+      do update set state = excluded.state, updated_at = now()
+    `, ["main", JSON.stringify(mergedState)]);
+    return { merged: true };
   }
   if (currentState) await backupDatabaseState("before_update");
   await pool.query(`
@@ -207,7 +308,7 @@ async function saveStateToDatabase(nextState) {
     on conflict (id)
     do update set state = excluded.state, updated_at = now()
   `, ["main", JSON.stringify(nextState)]);
-  return true;
+  return { merged: false };
 }
 
 async function restoreLargestDatabaseBackup() {
@@ -289,10 +390,10 @@ async function getAppState() {
 
 async function saveAppState(nextState) {
   if (pool) {
-    await saveStateToDatabase(nextState);
-    return;
+    return await saveStateToDatabase(nextState);
   }
   await saveStateToJsonFallback(nextState);
+  return { merged: false };
 }
 
 async function jsonResponse(res, status, data) {
@@ -330,6 +431,15 @@ async function start() {
       });
       return;
     }
+    if (url.pathname === "/api/state-summary" && req.method === "GET") {
+      try {
+        await jsonResponse(res, 200, await getStateSummary());
+      } catch (error) {
+        console.error("GET /api/state-summary failed:", error.message);
+        await jsonResponse(res, 500, { ok: false, error: "state_summary_failed" });
+      }
+      return;
+    }
     if (url.pathname === "/api/admin/restore-largest-backup" && req.method === "POST") {
       if (!process.env.ADMIN_RESTORE_TOKEN || req.headers["x-admin-token"] !== process.env.ADMIN_RESTORE_TOKEN) {
         await jsonResponse(res, 403, { ok: false, reason: "forbidden" });
@@ -353,8 +463,8 @@ async function start() {
       try {
         const body = await readBody(req);
         const nextState = JSON.parse(body);
-        await saveAppState(nextState);
-        await jsonResponse(res, 200, { ok: true });
+        const result = await saveAppState(nextState);
+        await jsonResponse(res, 200, { ok: true, ...(result || {}) });
       } catch (error) {
         const status = error.statusCode || 400;
         console.error("POST /api/state failed:", error.message);
