@@ -109,6 +109,16 @@ function shouldRefuseOverwrite(currentState, nextState) {
   const nextCount = recordCount(nextState);
   if (!currentCount) return false;
   if (!nextCount) return true;
+  const protectedPaths = [
+    ["products"],
+    ["staff"],
+    ["settings", "users"],
+  ];
+  const countAt = (data, path) => {
+    const value = path.reduce((next, key) => next?.[key], data);
+    return Array.isArray(value) ? value.length : 0;
+  };
+  if (protectedPaths.some((path) => countAt(nextState, path) < countAt(currentState, path))) return true;
   return currentCount - nextCount >= 3;
 }
 
@@ -200,6 +210,38 @@ async function saveStateToDatabase(nextState) {
   return true;
 }
 
+async function restoreLargestDatabaseBackup() {
+  if (!pool) {
+    const error = new Error("postgres_unavailable");
+    error.statusCode = 503;
+    throw error;
+  }
+  const result = await pool.query(`
+    select backup_id, state
+    from app_state_backups
+    order by
+      jsonb_array_length(coalesce(state->'products', '[]'::jsonb)) desc,
+      jsonb_array_length(coalesce(state->'settings'->'users', '[]'::jsonb)) desc,
+      backup_id desc
+    limit 1
+  `);
+  const backup = result.rows[0];
+  if (!backup?.state || !hasMeaningfulState(backup.state)) {
+    const error = new Error("backup_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  const currentState = await getStateFromDatabase();
+  if (currentState) await backupDatabaseState("before_manual_restore");
+  await pool.query(`
+    insert into app_state (id, state)
+    values ($1, $2::jsonb)
+    on conflict (id)
+    do update set state = excluded.state, updated_at = now()
+  `, ["main", JSON.stringify(backup.state)]);
+  return { backupId: backup.backup_id, state: backup.state };
+}
+
 async function getStateFromJsonFallback() {
   const state = await readJsonIfExists(stateFile);
   if (hasMeaningfulState(state)) return state;
@@ -286,6 +328,25 @@ async function start() {
         storage: pool ? "postgres" : "json",
         databaseConfigured: Boolean(databaseUrl),
       });
+      return;
+    }
+    if (url.pathname === "/api/admin/restore-largest-backup" && req.method === "POST") {
+      if (!process.env.ADMIN_RESTORE_TOKEN || req.headers["x-admin-token"] !== process.env.ADMIN_RESTORE_TOKEN) {
+        await jsonResponse(res, 403, { ok: false, reason: "forbidden" });
+        return;
+      }
+      try {
+        const restored = await restoreLargestDatabaseBackup();
+        await jsonResponse(res, 200, {
+          ok: true,
+          backupId: restored.backupId,
+          products: Array.isArray(restored.state.products) ? restored.state.products.length : 0,
+          users: Array.isArray(restored.state.settings?.users) ? restored.state.settings.users.length : 0,
+          staff: Array.isArray(restored.state.staff) ? restored.state.staff.length : 0,
+        });
+      } catch (error) {
+        await jsonResponse(res, error.statusCode || 500, { ok: false, reason: error.message || "restore_failed" });
+      }
       return;
     }
     if (url.pathname === "/api/state" && req.method === "POST") {
