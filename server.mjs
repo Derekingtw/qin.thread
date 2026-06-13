@@ -451,7 +451,9 @@ async function saveAppState(nextState) {
 }
 
 function normalizePhone(value) {
-  return String(value || "").replace(/[^\d+]/g, "").trim();
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  return /[A-Za-z@._-]/.test(raw) ? raw.toLowerCase() : raw.replace(/[^\d+]/g, "").trim();
 }
 
 async function authenticateUser(phone, password) {

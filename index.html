@@ -21,13 +21,13 @@
           <button class="section-tab" data-auth-tab="register" type="button">註冊</button>
         </div>
         <form class="auth-form active" id="loginForm" data-auth-panel="login">
-          <label>手機號<input required name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="請輸入手機號" /></label>
+          <label>手機號/帳號/信箱<input required name="phone" type="text" autocomplete="username" placeholder="手機號 / 帳號 / 信箱" /></label>
           <label>密碼<input required name="password" type="password" autocomplete="current-password" /></label>
           <button class="primary-btn" type="submit"><i data-lucide="log-in"></i><span>登入</span></button>
         </form>
         <form class="auth-form" id="registerForm" data-auth-panel="register">
           <label>姓名<input required name="name" /></label>
-          <label>手機號<input required name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="請輸入手機號" /></label>
+          <label>手機號/帳號/信箱<input required name="phone" type="text" autocomplete="username" placeholder="手機號 / 帳號 / 信箱" /></label>
           <label>密碼<input required name="password" type="password" autocomplete="new-password" /></label>
           <button class="primary-btn" type="submit"><i data-lucide="user-plus"></i><span>註冊</span></button>
         </form>
@@ -222,21 +222,21 @@
             </div>
             <label>缸號<input name="vat" placeholder="A260501" /></label>
             <div class="two-col">
-              <label>工廠生產重量<span class="unit-field"><input required name="factoryWeight" type="number" min="0" step="0.1" /><b>KG</b></span></label>
-              <label>打團重量(一團)<span class="unit-field"><input required name="ballWeight" type="number" min="0.1" step="0.1" /><b>g</b></span></label>
+              <label>工廠生產重量<span class="unit-field"><input required name="factoryWeight" type="number" min="0" step="0.01" /><b>KG</b></span></label>
+              <label>打團重量(一團)<span class="unit-field"><input required name="ballWeight" type="number" min="0.01" step="0.01" /><b>g</b></span></label>
             </div>
             <div class="two-col">
               <label>打團總數量<span class="unit-field"><input readonly name="productQty" type="number" min="0" step="1" /><b>團</b></span></label>
-              <label>單包團數<span class="unit-field"><input required name="packSize" type="number" min="1" step="1" /><b>團</b></span></label>
+              <label>單包團數<span class="unit-field"><input required name="packSize" type="number" min="0.01" step="0.01" /><b>團</b></span></label>
             </div>
             <div class="two-col">
               <label>產品包數<span class="unit-field"><input readonly name="packageCount" type="number" min="0" step="1" /><b>包</b></span></label>
             </div>
             <div class="two-col">
-              <label>進價<input name="cost" type="number" min="0" step="1" /></label>
-              <label>售價<input required name="price" type="number" min="0" step="1" /></label>
+              <label>進價<input name="cost" type="number" min="0" step="0.01" /></label>
+              <label>售價<input required name="price" type="number" min="0" step="0.01" /></label>
             </div>
-            <label>安全庫存<input name="minStock" type="number" min="0" step="1" value="0" /></label>
+            <label>安全庫存<input name="minStock" type="number" min="0" step="0.01" value="0" /></label>
             <label>備註<input name="note" /></label>
             <div class="form-actions">
               <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
@@ -251,10 +251,10 @@
             <label>分類<input name="category" placeholder="辦公用品" /></label>
             <label>單位<input name="unit" placeholder="箱" /></label>
             <div class="two-col">
-              <label>進價<input required name="cost" type="number" min="0" step="1" /></label>
-              <label>售價<input required name="price" type="number" min="0" step="1" /></label>
+              <label>進價<input required name="cost" type="number" min="0" step="0.01" /></label>
+              <label>售價<input required name="price" type="number" min="0" step="0.01" /></label>
             </div>
-            <label>安全庫存<input required name="minStock" type="number" min="0" step="1" /></label>
+            <label>安全庫存<input required name="minStock" type="number" min="0" step="0.01" /></label>
             <div class="form-actions">
               <button class="primary-btn" type="submit"><i data-lucide="save"></i><span>儲存</span></button>
               <button class="ghost-light-btn" data-reset-form="productForm" type="button"><i data-lucide="rotate-ccw"></i><span>清除</span></button>
@@ -344,7 +344,7 @@
             <div class="product-summary" id="purchaseProductCard"></div>
             <div class="two-col">
               <label>進貨包數<span class="unit-field"><input required name="qty" type="number" min="1" step="1" /><b>包</b></span></label>
-              <label>單包進價<input required name="price" type="number" min="0" step="1" /></label>
+              <label>單包進價<input required name="price" type="number" min="0" step="0.01" /></label>
             </div>
             <label>日期<input required name="date" type="date" /></label>
             <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
@@ -381,7 +381,7 @@
             <div class="product-summary" id="saleProductCard"></div>
             <div class="two-col">
               <label>銷貨包數<span class="unit-field"><input required name="qty" type="number" min="1" step="1" /><b>包</b></span></label>
-              <label>單包售價<input required name="price" type="number" min="0" step="1" /></label>
+              <label>單包售價<input required name="price" type="number" min="0" step="0.01" /></label>
             </div>
             <label>日期<input required name="date" type="date" /></label>
             <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
@@ -410,7 +410,7 @@
             <div class="product-summary" id="qinLiveSaleProductCard"></div>
             <div class="two-col">
               <label>銷售包數<span class="unit-field"><input required name="qty" type="number" min="1" step="1" /><b>包</b></span></label>
-              <label>單包售價<input required name="price" type="number" min="0" step="1" /></label>
+              <label>單包售價<input required name="price" type="number" min="0" step="0.01" /></label>
             </div>
             <label>日期<input required name="date" type="date" /></label>
             <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
@@ -637,7 +637,7 @@
             <div class="product-summary" id="shipmentProductCard"></div>
             <div class="two-col">
               <label>出貨包數<span class="unit-field"><input required name="qty" type="number" min="1" step="1" /><b>包</b></span></label>
-              <label>單包價格<input name="price" type="number" min="0" step="1" /></label>
+              <label>單包價格<input name="price" type="number" min="0" step="0.01" /></label>
             </div>
             <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
           </form>
@@ -728,7 +728,7 @@
             <label>狀態<select name="status"><option>編織中</option><option>寄送中</option><option>已到貨</option></select></label>
             <label>樣衣款式<select name="style"><option>無袖</option><option>長袖</option><option>大衣</option><option>背心</option><option>配件</option></select></label>
             <label>是否有教程<select name="hasTutorial"><option>是</option><option>否</option></select></label>
-            <label>單價<input required name="price" type="number" min="0" step="1" /></label>
+            <label>單價<input required name="price" type="number" min="0" step="0.01" /></label>
             <label>是否已結清<select name="settled"><option>未支付</option><option>已結清</option></select></label>
             <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>新增</span></button>
           </form>

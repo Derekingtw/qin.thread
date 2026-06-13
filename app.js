@@ -27,7 +27,11 @@ const TRADE_COMPANY_HEADER = {
   address: "3 F., No. 57, Dayong St., Zhonghe Dist., New Taipei City 23579, Taiwan (R.O.C.)",
   contact: "TEL:+886-(02)2942-1958   FAX:+886-(02)2942-1928",
 };
-const normalizePhone = (value) => String(value || "").replace(/[^\d+]/g, "").trim();
+const normalizePhone = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  return /[A-Za-z@._-]/.test(raw) ? raw.toLowerCase() : raw.replace(/[^\d+]/g, "").trim();
+};
 const phoneDigits = (value) => normalizePhone(value).replace(/\D/g, "");
 const staffRoleAliases = {
   管理者: "管理員",
@@ -542,7 +546,7 @@ function registerUser(form) {
   const phone = normalizePhone(data.phone || data.username);
   const name = String(data.name || "").trim();
   if (!phone) return toast("請輸入手機號");
-  if (phoneDigits(phone).length < 8) return toast("手機號格式不正確");
+  if (/^\+?\d+$/.test(phone) && phoneDigits(phone).length < 8) return toast("手機號格式不正確");
   if (!name) return toast("請輸入姓名");
   if (state.settings.users.some((user) => normalizePhone(user.phone || user.username) === phone)) return toast("手機號已存在");
   const isFirst = state.settings.users.length === 0;
@@ -895,18 +899,47 @@ function productImage(product) {
   return product?.imageData || "";
 }
 
+function imageViewerButton(src, label = "image", size = "table") {
+  const image = String(src || "");
+  const title = String(label || "image");
+  if (!image) return "";
+  return `<button class="image-open" type="button" data-image-view="${encodeURIComponent(image)}" data-image-title="${escapeHtml(title)}" aria-label="放大圖片"><img class="product-thumb ${size}" src="${image}" alt="${escapeHtml(title)}" loading="lazy" /></button>`;
+}
+
 function productThumb(product, size = "table") {
   const image = productImage(product);
   const label = product?.name || "產品";
   return image
-    ? `<img class="product-thumb ${size}" src="${image}" alt="${label}" loading="lazy" />`
+    ? imageViewerButton(image, label, size)
     : `<span class="product-thumb empty-thumb ${size}">無圖</span>`;
 }
 
 function imageThumb(src, label = "圖片", size = "table") {
   return src
-    ? `<img class="product-thumb ${size}" src="${src}" alt="${label}" loading="lazy" />`
+    ? imageViewerButton(src, label, size)
     : `<span class="product-thumb empty-thumb ${size}">無圖</span>`;
+}
+
+function closeImageViewer() {
+  $("#imageViewerModal")?.remove();
+  document.body.classList.remove("image-viewer-active");
+}
+
+function openImageViewer(src, title = "image") {
+  const image = String(src || "");
+  if (!image) return;
+  closeImageViewer();
+  const modal = document.createElement("div");
+  modal.id = "imageViewerModal";
+  modal.className = "image-viewer";
+  modal.innerHTML = `
+    <div class="image-viewer-frame" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
+      <button class="image-viewer-close" type="button" data-image-close aria-label="關閉">×</button>
+      <img src="${image}" alt="${escapeHtml(title)}" />
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.body.classList.add("image-viewer-active");
 }
 
 function liveNet(item) {
@@ -1595,7 +1628,8 @@ function permissionLabel(view) {
 function ensureErpTabs() {
   $$(".system-tabs").forEach((tabs) => {
     const hasErpButton = [...tabs.querySelectorAll("[data-system-tab]")].some((button) => ERP_VIEWS.includes(button.dataset.systemTab));
-    if (!hasErpButton) return;
+    const isErpTabs = hasErpButton || (tabs.getAttribute("aria-label") || "").includes("ERP");
+    if (!isErpTabs) return;
     ERP_VIEWS.forEach((view) => {
       if (tabs.querySelector(`[data-system-tab="${view}"]`)) return;
       const button = document.createElement("button");
@@ -2510,7 +2544,7 @@ function renderProductImagePreview(src) {
   const preview = $("#productImagePreview");
   if (!preview) return;
   preview.innerHTML = src
-    ? `<img src="${src}" alt="產品圖片預覽" />`
+    ? imageViewerButton(src, "product image", "preview")
     : "尚未選擇圖片";
 }
 
@@ -2518,7 +2552,7 @@ function renderImagePreview(targetId, src) {
   const preview = $(`#${targetId}`);
   if (!preview) return;
   preview.innerHTML = src
-    ? `<img src="${src}" alt="圖片預覽" />`
+    ? imageViewerButton(src, "image preview", "preview")
     : "尚未選擇圖片";
 }
 
@@ -3727,6 +3761,9 @@ function bindEvents() {
     const authTab = event.target.closest("[data-auth-tab]");
     if (authTab) setAuthTab(authTab.dataset.authTab);
   });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeImageViewer();
+  });
   document.addEventListener("submit", (event) => {
     if (event.target.id === "loginForm") {
       event.preventDefault();
@@ -3968,6 +4005,16 @@ function bindEvents() {
   });
 
   document.addEventListener("click", (event) => {
+    const imageButton = event.target.closest("[data-image-view]");
+    if (imageButton) {
+      event.preventDefault();
+      openImageViewer(decodeURIComponent(imageButton.dataset.imageView || ""), imageButton.dataset.imageTitle || "image");
+      return;
+    }
+    if (event.target.closest("[data-image-close]") || event.target.id === "imageViewerModal") {
+      closeImageViewer();
+      return;
+    }
     const edit = event.target.closest("[data-edit]");
     const del = event.target.closest("[data-delete]");
     const approve = event.target.closest("[data-approve]");
