@@ -1,9 +1,9 @@
 const STORAGE_KEY = "oa_inventory_state_v1";
 const SESSION_KEY = "oa_inventory_session_v1";
-const ALL_VIEWS = ["dashboard", "products", "partners", "inventory", "purchases", "sales", "qinLiveSales", "shipping", "invoices", "tracking", "production", "contracts", "liveSales", "live", "knitters", "staff", "leave", "approvals", "payroll", "intl", "growth", "settings"];
+const ALL_VIEWS = ["dashboard", "products", "partners", "inventory", "purchases", "sales", "qinLiveSales", "shipping", "invoices", "tracking", "production", "contracts", "liveSales", "live", "liveProducts", "knitters", "staff", "leave", "approvals", "payroll", "intl", "growth", "settings"];
 const ERP_VIEWS = ["products", "partners", "inventory", "purchases", "sales", "qinLiveSales", "shipping", "invoices", "tracking", "production", "contracts"];
 const ERP_TAB_LABELS = { products: "商品", partners: "往來單位", inventory: "庫存", purchases: "進貨", sales: "銷貨", qinLiveSales: "秦時線直播間銷售", shipping: "出貨單", invoices: "發票上傳", tracking: "貨品追蹤", production: "生產圖", contracts: "合同" };
-const LIVE_SYSTEM_VIEWS = ["live", "liveSales"];
+const LIVE_SYSTEM_VIEWS = ["live", "liveSales", "liveProducts"];
 const VIEW_LABELS = { dashboard: "總覽", knitters: "織女系統", staff: "人事資料", leave: "請假申請", approvals: "審批系統", payroll: "會計系統", intl: "國貿系統", growth: "養成系統", settings: "資料設定" };
 
 const $ = (selector) => document.querySelector(selector);
@@ -62,6 +62,7 @@ const defaultState = () => ({
   yarnTracks: [],
   liveShows: [],
   liveSales: [],
+  liveProducts: [],
   knitters: [],
   samples: [],
   yarnShipments: [],
@@ -186,6 +187,7 @@ function isMeaningfulState(value) {
       (value.qinLiveSales || []).length ||
       (value.invoiceUploads || []).length ||
       (value.liveSales || []).length ||
+      (value.liveProducts || []).length ||
       (value.knitters || []).length ||
       (value.samples || []).length ||
       (value.tradeDocs || []).length ||
@@ -212,6 +214,11 @@ function normalizeState(saved) {
     ...user,
     phone: normalizePhone(user.phone || user.username || ""),
     username: normalizePhone(user.phone || user.username || ""),
+    permissions: user.role === "admin" || (user.permissions || []).includes("liveProducts")
+      ? user.permissions
+      : (user.permissions || []).some((view) => view === "live" || view === "liveSales")
+        ? [...(user.permissions || []), "liveProducts"]
+        : (user.permissions || []),
     systemRole: user.systemRole || (user.role === "admin" ? "管理員" : "普通人員"),
   }));
   next.settings.positions = [...new Set(["待補資料", ...(next.settings.positions || []), ...((next.staff || []).map((item) => item.title).filter(Boolean))])];
@@ -274,6 +281,14 @@ function normalizeState(saved) {
     revenue: Number(item.revenue ?? (Number(item.qty || 0) * Number(item.price || 0))),
     refund: Number(item.refund || 0),
     netRevenue: Number(item.netRevenue ?? (Number(item.revenue ?? (Number(item.qty || 0) * Number(item.price || 0))) - Number(item.refund || 0))),
+  }));
+  next.liveProducts = (next.liveProducts || []).map((item) => ({
+    ...item,
+    hostId: item.hostId || "",
+    host: item.host || "",
+    room: item.room || "秦時線",
+    items: Array.isArray(item.items) ? item.items.map((line) => ({ productId: line.productId || "" })).filter((line) => line.productId) : [],
+    createdAt: Number(item.createdAt || Date.now()),
   }));
   next.knitters = (next.knitters || []).map((item) => ({
     ...item,
@@ -373,9 +388,9 @@ function permissionsForStaffRole(role) {
   if (normalized === "管理員") return [...ALL_VIEWS];
   if (normalized === "代理管理員") return ALL_VIEWS.filter((view) => view !== "settings");
   if (normalized === "核心人員") {
-    return ["dashboard", "products", "partners", "inventory", "purchases", "sales", "qinLiveSales", "shipping", "invoices", "liveSales", "live", "knitters", "staff", "leave", "approvals", "payroll", "intl", "tracking", "production", "growth"];
+    return ["dashboard", "products", "partners", "inventory", "purchases", "sales", "qinLiveSales", "shipping", "invoices", "liveSales", "live", "liveProducts", "knitters", "staff", "leave", "approvals", "payroll", "intl", "tracking", "production", "growth"];
   }
-  return ["dashboard", "products", "inventory", "sales", "invoices", "liveSales", "leave", "growth"];
+  return ["dashboard", "products", "inventory", "sales", "invoices", "liveSales", "liveProducts", "leave", "growth"];
 }
 
 function navViewFor(view) {
@@ -713,6 +728,15 @@ function productOptions(select, mode) {
   select.innerHTML = options.join("") || `<option value="">請先建立銷售產品</option>`;
 }
 
+function liveInventoryProductOptions(selectedId = "") {
+  const rows = (state.products || []).filter((product) => product.type === "sale");
+  return rows.map((product) => {
+    const stock = productStock(product.id);
+    const label = `${product.sku || "-"} ${product.name || "-"} / ${product.yarnNo || "-"} / ${product.color || "-"} / 庫存 ${number(stock)} 包`;
+    return `<option value="${product.id}" ${product.id === selectedId ? "selected" : ""}>${escapeHtml(label)}</option>`;
+  }).join("") || `<option value="">請先建立 ERP 庫存商品</option>`;
+}
+
 function partnerOptions(select, mode) {
   const rows = state.partners.filter((partner) => mode === "factory" ? partner.factoryType : partner.partnerType || partner.customerName);
   select.innerHTML = rows.map((partner) => {
@@ -1027,7 +1051,7 @@ function syncSelects() {
   liveShowOptions($("#liveSaleShow"));
   positionOptions($("#staffTitle"));
   renderGrowthLevelNameInputs();
-  ["leaveStaff", "tripStaff", "purchaseRequestStaff", "proposalStaff", "growthStaff", "qinLiveSaleHost"].forEach((id) => staffOptions($(`#${id}`)));
+  ["leaveStaff", "tripStaff", "purchaseRequestStaff", "proposalStaff", "growthStaff", "qinLiveSaleHost", "liveProductHost"].forEach((id) => staffOptions($(`#${id}`)));
   ["adminPayrollStaff", "livePayrollStaff", "partnerBonusStaff"].forEach((id) => staffOptions($(`#${id}`)));
   ["leaveApprover", "tripApprover", "purchaseRequestApprover", "proposalApprover"].forEach((id) => staffOptions($(`#${id}`), true));
   knitterOptions($("#sampleKnitter"));
@@ -1045,6 +1069,7 @@ function syncSelects() {
   updateDocProduct("saleForm", "saleProductCard", "price");
   updateDocProduct("qinLiveSaleForm", "qinLiveSaleProductCard", "price");
   updateDocProduct("shipmentForm", "shipmentProductCard", "price");
+  if (!$("#liveProductLineInputs")?.children.length) renderLiveProductLineInputs([], 1);
 }
 
 function renderProductCard(productId, targetId) {
@@ -1459,6 +1484,25 @@ function renderLiveSales() {
       <td>${item.note || "-"}</td>
       <td>${rowActions("liveSale", item.id)}</td>
     </tr>`).join("") || emptyRow(8);
+}
+
+function renderLiveProducts() {
+  const rows = currentRows(state.liveProducts || []).sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+  $("#liveProductCount").textContent = `${rows.length} 筆`;
+  $("#liveProductRows").innerHTML = rows.map((item) => {
+    const details = (item.items || []).map((line) => {
+      const product = findProduct(line.productId);
+      if (!product) return "";
+      return `${product.sku || "-"} ${product.name || "-"}（庫存 ${number(productStock(product.id))} 包）`;
+    }).filter(Boolean).join("<br>");
+    return `<tr>
+      <td>${item.room || "-"}</td>
+      <td>${staffName(item.hostId, item.host || "-")}</td>
+      <td>${details || "-"}</td>
+      <td>${new Date(Number(item.createdAt || Date.now())).toLocaleString("zh-TW")}</td>
+      <td>${rowActions("liveProduct", item.id)}</td>
+    </tr>`;
+  }).join("") || emptyRow(5);
 }
 
 function renderKnitters() {
@@ -1912,6 +1956,35 @@ function addYarnShipmentLine(count = 1) {
   renderYarnShipmentLineInputs([...currentYarnShipmentLineDrafts(), ...Array.from({ length: count }, () => ({}))], 0);
 }
 
+function renderLiveProductLineInputs(lines = [], minRows = 1) {
+  const rows = Array.from({ length: Math.max(lines.length, minRows) }, (_, index) => lines[index] || {});
+  $("#liveProductLineInputs").innerHTML = rows.map((line, index) => {
+    const product = findProduct(line.productId);
+    return `<div class="live-product-line-row" data-live-product-line="${index}">
+      <select name="liveProductId">${liveInventoryProductOptions(line.productId || "")}</select>
+      <span>${product ? `${number(productStock(product.id))} 包` : "-"}</span>
+      <button class="small-btn delete" data-remove-live-product-line="${index}" type="button" aria-label="刪除商品"><i data-lucide="x"></i></button>
+    </div>`;
+  }).join("");
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function currentLiveProductLineDrafts() {
+  return [...document.querySelectorAll("[data-live-product-line]")].map((row) => ({
+    productId: row.querySelector("[name='liveProductId']")?.value || "",
+  })).filter((line, index, rows) => line.productId && rows.findIndex((item) => item.productId === line.productId) === index);
+}
+
+function addLiveProductLine(count = 1) {
+  renderLiveProductLineInputs([...currentLiveProductLineDrafts(), ...Array.from({ length: count }, () => ({}))], 0);
+}
+
+function removeLiveProductLine(index) {
+  const rows = currentLiveProductLineDrafts();
+  rows.splice(index, 1);
+  renderLiveProductLineInputs(rows.length ? rows : [{}], 0);
+}
+
 function invoiceLineTemplate() {
   return `<div class="invoice-line-row" data-invoice-line>
     <input name="lineItemName" placeholder="項目名稱" />
@@ -2324,6 +2397,7 @@ function renderAll() {
   renderLive();
   renderShipments();
   renderLiveSales();
+  renderLiveProducts();
   renderKnitters();
   renderStaff();
   renderLeave();
@@ -2504,6 +2578,9 @@ function resetForm(form) {
   }
   if (form.id === "liveSaleForm") {
     updateLiveSaleNet();
+  }
+  if (form.id === "liveProductForm") {
+    renderLiveProductLineInputs([], 1);
   }
   if (["adminPayrollForm", "livePayrollForm", "partnerBonusForm"].includes(form.id)) {
     updatePayrollStaff(form);
@@ -2968,7 +3045,7 @@ function deleteItem(type, id) {
       ? state.purchases.some((doc) => doc.partnerId === id) || state.sales.some((doc) => doc.partnerId === id)
       : false;
   if (hasDoc) return toast("已有單據使用，請保留資料");
-  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", qinLiveSale: "qinLiveSales", invoiceUpload: "invoiceUploads", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", yarnShipment: "yarnShipments", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs", growthRecord: "growthRecords" };
+  const map = { product: "products", partner: "partners", purchase: "purchases", sale: "sales", qinLiveSale: "qinLiveSales", invoiceUpload: "invoiceUploads", tracking: "yarnTracks", live: "liveShows", liveSale: "liveSales", liveProduct: "liveProducts", shipment: "shipments", staff: "staff", leave: "leaveRequests", announcement: "announcements", knitter: "knitters", sample: "samples", yarnShipment: "yarnShipments", trip: "tripRequests", purchaseRequest: "purchaseRequests", proposal: "proposalRequests", adminPayroll: "adminPayrolls", livePayroll: "livePayrolls", partnerBonus: "partnerBonuses", tradeDoc: "tradeDocs", growthRecord: "growthRecords" };
   const collection = map[type];
   if (!collection || !Array.isArray(state[collection])) return;
   const targetItem = state[collection].find((item) => item.id === id);
@@ -3263,6 +3340,25 @@ function addLiveSale(form) {
   saveState();
   resetForm(form);
   toast("直播間銷售已新增");
+  renderAll();
+}
+
+function addLiveProduct(form) {
+  const data = Object.fromEntries(new FormData(form));
+  const items = currentLiveProductLineDrafts();
+  if (!data.hostId) return toast("請選擇主播");
+  if (!items.length) return toast("請至少新增一個直播間販售商品");
+  state.liveProducts = [...(state.liveProducts || []), {
+    id: uid("live-product"),
+    hostId: data.hostId,
+    host: staffName(data.hostId, ""),
+    room: data.room,
+    items,
+    createdAt: Date.now(),
+  }];
+  saveState();
+  resetForm(form);
+  toast("直播間商品已儲存");
   renderAll();
 }
 
@@ -3826,6 +3922,14 @@ function bindEvents() {
     if (remove) removeYarnShipmentLine(Number(remove.dataset.removeYarnLine));
   });
   $("#addYarnShipmentLineBtn").addEventListener("click", () => addYarnShipmentLine());
+  $("#addLiveProductLineBtn").addEventListener("click", () => addLiveProductLine());
+  $("#liveProductLineInputs").addEventListener("click", (event) => {
+    const remove = event.target.closest("[data-remove-live-product-line]");
+    if (remove) removeLiveProductLine(Number(remove.dataset.removeLiveProductLine));
+  });
+  $("#liveProductLineInputs").addEventListener("change", () => {
+    renderLiveProductLineInputs(currentLiveProductLineDrafts(), 1);
+  });
   $("#addInvoiceLineBtn").addEventListener("click", addInvoiceLine);
   $("#invoiceLineInputs").addEventListener("click", (event) => {
     const remove = event.target.closest("[data-remove-invoice-line]");
@@ -3913,6 +4017,10 @@ function bindEvents() {
   $("#liveSaleForm").addEventListener("submit", (event) => {
     event.preventDefault();
     addLiveSale(event.currentTarget);
+  });
+  $("#liveProductForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    addLiveProduct(event.currentTarget);
   });
   $("#tradeForm").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -4083,6 +4191,7 @@ async function init() {
   resetForm($("#liveForm"));
   resetForm($("#shipmentForm"));
   resetForm($("#liveSaleForm"));
+  resetForm($("#liveProductForm"));
   resetForm($("#tradeForm"));
   resetForm($("#knitterForm"));
   resetForm($("#sampleForm"));

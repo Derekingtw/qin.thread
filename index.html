@@ -589,6 +589,7 @@
         <div class="section-tabs system-tabs" role="tablist" aria-label="直播系統分類">
           <button class="section-tab active" data-system-tab="live" type="button">直播對應</button>
           <button class="section-tab" data-system-tab="liveSales" type="button">直播間銷售</button>
+          <button class="section-tab" data-system-tab="liveProducts" type="button">直播間商品</button>
         </div>
         <div class="workspace">
           <form class="editor" id="liveForm">
@@ -609,6 +610,34 @@
           <section class="panel wide">
             <div class="panel-head"><h2>直播排程</h2><span id="liveCount" class="pill">0 場</span></div>
             <div class="table-wrap"><table><thead><tr><th>場次</th><th>日期</th><th>時段</th><th>主播</th><th>主推品</th><th>目標GMV</th><th>狀態</th><th></th></tr></thead><tbody id="liveRows"></tbody></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="liveProducts">
+        <div class="section-tabs system-tabs" role="tablist" aria-label="直播系統分類">
+          <button class="section-tab" data-system-tab="live" type="button">直播對應</button>
+          <button class="section-tab" data-system-tab="liveSales" type="button">直播間銷售</button>
+          <button class="section-tab active" data-system-tab="liveProducts" type="button">直播間商品</button>
+        </div>
+        <div class="workspace">
+          <form class="editor live-product-editor" id="liveProductForm">
+            <h2>直播間商品</h2>
+            <label>主播<select required name="hostId" id="liveProductHost"></select></label>
+            <label>直播間<select required name="room"><option>秦時線</option><option>秦時線店鋪</option></select></label>
+            <div class="trade-lines">
+              <div class="trade-lines-head">
+                <strong>直播間販售商品</strong>
+                <button class="ghost-light-btn" id="addLiveProductLineBtn" type="button">新增商品</button>
+              </div>
+              <div class="live-product-line-head"><span>庫存商品</span><span>目前庫存</span><span></span></div>
+              <div id="liveProductLineInputs"></div>
+            </div>
+            <button class="primary-btn" type="submit"><i data-lucide="plus"></i><span>儲存直播間商品</span></button>
+          </form>
+          <section class="panel wide">
+            <div class="panel-head"><h2>直播間商品清單</h2><span id="liveProductCount" class="pill">0 筆</span></div>
+            <div class="table-wrap"><table><thead><tr><th>直播間</th><th>主播</th><th>商品明細</th><th>建立時間</th><th></th></tr></thead><tbody id="liveProductRows"></tbody></table></div>
           </section>
         </div>
       </section>
@@ -652,6 +681,7 @@
         <div class="section-tabs system-tabs" role="tablist" aria-label="直播系統分類">
           <button class="section-tab" data-system-tab="live" type="button">直播對應</button>
           <button class="section-tab active" data-system-tab="liveSales" type="button">直播間銷售</button>
+          <button class="section-tab" data-system-tab="liveProducts" type="button">直播間商品</button>
         </div>
         <div class="workspace">
           <form class="editor" id="liveSaleForm">

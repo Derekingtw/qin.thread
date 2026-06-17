@@ -25,6 +25,7 @@ const initialState = () => ({
   yarnTracks: [],
   liveShows: [],
   liveSales: [],
+  liveProducts: [],
   shipments: [],
   staff: [],
   leaveRequests: [],
@@ -81,6 +82,7 @@ function recordCount(data) {
     data.yarnTracks,
     data.liveShows,
     data.liveSales,
+    data.liveProducts,
     data.shipments,
     data.staff,
     data.leaveRequests,
@@ -110,6 +112,7 @@ const stateArrayKeys = [
   "yarnTracks",
   "liveShows",
   "liveSales",
+  "liveProducts",
   "shipments",
   "staff",
   "leaveRequests",
@@ -539,7 +542,7 @@ async function recreateAccountDirect({ phone, name = "白毛", systemRole = "核
   };
   const permissions = [
     "dashboard", "products", "partners", "inventory", "purchases", "sales", "qinLiveSales", "shipping", "invoices",
-    "tracking", "production", "contracts", "liveSales", "live", "knitters", "staff", "leave", "approvals",
+    "tracking", "production", "contracts", "liveSales", "live", "liveProducts", "knitters", "staff", "leave", "approvals",
     "payroll", "intl", "growth",
   ];
   const user = {
