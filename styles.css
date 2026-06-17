@@ -1256,10 +1256,10 @@ input[type="file"] {
 .live-product-line-head,
 .live-product-line-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(92px, .42fr) 42px;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) 84px 40px;
+  gap: 8px;
   align-items: center;
-  min-width: 420px;
+  min-width: 0;
 }
 
 .live-product-line-head {
@@ -1269,6 +1269,33 @@ input[type="file"] {
 }
 
 .live-product-line-row select {
+  width: 100%;
+  min-width: 0;
+}
+
+.live-product-editor {
+  min-width: 0;
+}
+
+.live-product-editor .trade-lines {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.live-product-line-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+#liveProducts .workspace {
+  grid-template-columns: minmax(420px, .72fr) minmax(0, 1.28fr);
+}
+
+#liveProducts .panel.wide {
   min-width: 0;
 }
 
